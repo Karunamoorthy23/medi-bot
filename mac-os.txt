@@ -1,0 +1,8 @@
+pip install flask
+
+pip install google-generativeai==0.8.5
+
+pip install SQLAlchemy==2.0.29
+
+
+Conda

@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medical Chatbot - Book Appointment</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+        
+        h2 {
+            color: #333;
+            margin-bottom: 30px;
+            text-align: center;
+            font-size: 28px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-weight: 500;
+        }
+        
+        input, select, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        textarea {
+            height: 100px;
+            resize: vertical;
+        }
+        
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        button:hover {
+            background: #5a67d8;
+        }
+        
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .success {
+            background: #d4edda;
+            color: #155724;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .back-link {
+            text-align: center;
+            margin-top: 20px;
+        }
+        
+        .back-link a {
+            color: #667eea;
+            text-decoration: none;
+        }
+        
+        .back-link a:hover {
+            text-decoration: underline;
+        }
+        
+        .info-box {
+            background: #e8f4fd;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            color: #0369a1;
+        }
+        
+        .time-slots {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .time-slot {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .time-slot:hover {
+            background: #f0f0f0;
+        }
+        
+        .time-slot.selected {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+        
+        .time-slot.booked {
+            background: #f5f5f5;
+            color: #999;
+            cursor: not-allowed;
+            text-decoration: line-through;
+        }
+        
+        .time-slot.booked:hover {
+            background: #f5f5f5;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Book Appointment</h2>
+        
+        {% if error %}
+        <div class="error">{{ error }}</div>
+        {% endif %}
+        
+        {% if success %}
+        <div class="success">{{ success }}</div>
+        {% endif %}
+        
+        <div class="info-box">
+            <strong>Selected Doctor:</strong> {{ doctor_name }} ({{ specialization }})
+        </div>
+        
+        <form method="POST" action="{{ url_for('book_appointment') }}" id="appointmentForm">
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" value="{{ username }}" readonly>
+            </div>
+            
+            <div class="form-group">
+                <label for="age">Age</label>
+                <input type="number" id="age" name="age" required min="1" max="120">
+            </div>
+            
+            <div class="form-group">
+                <label for="gender">Gender</label>
+                <select id="gender" name="gender" required>
+                    <option value="">Select Gender</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="problem">Problem Description</label>
+                <textarea id="problem" name="problem" required placeholder="Please describe your symptoms in detail..."></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="appointment_date">Appointment Date</label>
+                <input type="date" id="appointment_date" name="appointment_date" required min="">
+            </div>
+            
+            <div class="form-group">
+                <label>Select Time Slot</label>
+                <div id="timeSlots" class="time-slots">
+                    <!-- Time slots will be populated by JavaScript -->
+                </div>
+                <input type="hidden" id="time_slot" name="time_slot" required>
+            </div>
+            
+            <input type="hidden" name="doctor_id" value="{{ doctor_id }}">
+            
+            <button type="submit">Book Appointment</button>
+        </form>
+        
+        <div class="back-link">
+            <a href="{{ url_for('chatbot') }}">Back to Chat</a>
+        </div>
+    </div>
+    
+    <script>
+        // Set min date to today
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('appointment_date').min = today;
+        
+        // Generate time slots
+        const timeSlotsDiv = document.getElementById('timeSlots');
+        const timeSlotInput = document.getElementById('time_slot');
+        
+        // Generate time slots from 9 AM to 5 PM
+        for (let hour = 9; hour <= 17; hour++) {
+            const time = `${hour}:00`;
+            const slotDiv = document.createElement('div');
+            slotDiv.className = 'time-slot';
+            slotDiv.textContent = time;
+            
+            // Check if slot is booked (this would normally come from backend)
+            // For demo, we'll mark some slots as booked
+            if (time === '12:00' || time === '13:00') {
+                slotDiv.classList.add('booked');
+                slotDiv.onclick = function(e) {
+                    e.preventDefault();
+                    alert('This time slot is already booked. Please select another time.');
+                };
+            } else {
+                slotDiv.onclick = function() {
+                    // Remove selected class from all slots
+                    document.querySelectorAll('.time-slot').forEach(slot => {
+                        slot.classList.remove('selected');
+                    });
+                    
+                    // Add selected class to this slot
+                    this.classList.add('selected');
+                    
+                    // Set hidden input value
+                    timeSlotInput.value = this.textContent;
+                };
+            }
+            
+            timeSlotsDiv.appendChild(slotDiv);
+        }
+        
+        // Form validation
+        document.getElementById('appointmentForm').onsubmit = function(e) {
+            if (!timeSlotInput.value) {
+                e.preventDefault();
+                alert('Please select a time slot');
+                return false;
+            }
+            return true;
+        };
+    </script>
+</body>
+</html>

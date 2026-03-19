@@ -1,0 +1,7 @@
+1)Open Anaconda Prompt
+
+2)activate myenv
+
+3)cd C:\Users\kisho\OneDrive\Desktop\Medical Chatbot
+
+4)python app.py
