@@ -8,6 +8,14 @@ from functools import wraps
 import json
 import re
 import warnings
+
+# Load environment variables from .env file
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass  # dotenv not installed, use system environment variables
+
 from patient_agent import PatientAgent
 warnings.filterwarnings("ignore", category=FutureWarning)
 
@@ -23,8 +31,18 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + db_path.replace('\\', '/'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Allow React (Vite) frontend to call Flask with session cookies
-frontend_origin = os.environ.get('FRONTEND_ORIGIN', 'http://localhost:5173')
-CORS(app, supports_credentials=True, resources={r"/*": {"origins": frontend_origin}})
+# Parse comma-separated frontend origins from environment variable
+frontend_origins_str = os.environ.get('FRONTEND_ORIGIN', 'http://localhost:5173,http://localhost:3000')
+frontend_origins = [origin.strip() for origin in frontend_origins_str.split(',')]
+
+# Configure CORS with the list of origins
+cors_config = {
+    "origins": frontend_origins,
+    "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    "allow_headers": ["Content-Type", "Authorization"],
+    "supports_credentials": True
+}
+CORS(app, resources={r"/*": cors_config})
 
 # Initialize database
 db = SQLAlchemy(app)
