@@ -3,13 +3,18 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 from datetime import datetime, timedelta
 import os
+import time
 import google.generativeai as genai
 from functools import wraps
 import json
 import re
 import warnings
+from dotenv import load_dotenv
 from patient_agent import PatientAgent
 warnings.filterwarnings("ignore", category=FutureWarning)
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -23,8 +28,14 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + db_path.replace('\\', '/'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Allow React (Vite) frontend to call Flask with session cookies
-frontend_origin = os.environ.get('FRONTEND_ORIGIN', 'http://localhost:5173')
-CORS(app, supports_credentials=True, resources={r"/*": {"origins": frontend_origin}})
+frontend_origins = os.environ.get('FRONTEND_ORIGIN', 'http://localhost:5174').split(',')
+frontend_origins = [origin.strip() for origin in frontend_origins]
+CORS(app, 
+     supports_credentials=True,
+     origins=frontend_origins,
+     allow_headers=['Content-Type', 'Authorization'],
+     methods=['GET', 'POST', 'OPTIONS', 'PUT', 'DELETE'],
+     expose_headers=['Content-Type'])
 
 # Initialize database
 db = SQLAlchemy(app)
@@ -70,6 +81,7 @@ class Appointment(db.Model):
 class ChatHistory(db.Model):
     __tablename__ = 'chat_history'
     id = db.Column(db.Integer, primary_key=True)
+    chat_id = db.Column(db.String(50), nullable=True)  # Link to conversation
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     message = db.Column(db.Text, nullable=False)
     response = db.Column(db.Text, nullable=False)
@@ -78,6 +90,14 @@ class ChatHistory(db.Model):
     emergency_detected = db.Column(db.Boolean, default=False)
     severity = db.Column(db.Integer, default=0)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+
+class Chat(db.Model):
+    __tablename__ = 'chats'
+    id = db.Column(db.String(50), primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    title = db.Column(db.String(255), default='New Conversation')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 # Create database tables
 with app.app_context():
@@ -426,32 +446,83 @@ def check_doctors_status():
 def send_message():
     data = request.get_json()
     user_message = data.get('message', '')
+    chat_id = data.get('chat_id')
     user_id = session.get('user_id')
     
-    # Get current session context for the agent
-    session_context = session.get('agent_context', {'state': 'IDLE'})
+    # Create a new chat if chat_id not provided
+    if not chat_id:
+        # Generate chat_id from timestamp
+        chat_id = str(int(time.time() * 1000))
+        
+        # Create Chat record with title from first message
+        # Always use the message content as title (up to 50 chars)
+        chat_title = user_message.strip()[:50] if user_message.strip() else 'New Conversation'
+        
+        new_chat = Chat(
+            id=chat_id,
+            user_id=user_id,
+            title=chat_title,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        )
+        db.session.add(new_chat)
+        db.session.commit()
+    
+    # Get agent context for THIS SPECIFIC CHAT (isolated per chat_id)
+    # Initialize agent_contexts dict if not exists
+    if 'agent_contexts' not in session:
+        session['agent_contexts'] = {}
+    
+    # Get context for this chat, default to IDLE if new chat
+    session_context = session['agent_contexts'].get(chat_id, {'state': 'IDLE'})
     
     # Process message through agent
     result = patient_agent.process_message(user_message, session_context, user_id)
     
-    # Update session context
-    session['agent_context'] = result.get('session_context')
+    # Update session context for THIS SPECIFIC CHAT
+    session['agent_contexts'][chat_id] = result.get('session_context')
+    session.modified = True  # Mark session as modified so Flask saves it
+    
+    # Always save to chat history (both normal and booking flow)
+    # Extract response info
+    response_text = result.get('response', '')
+    analysis = result.get('analysis', {})
+    
+    # Only save if response is not a system message like 'FINALIZING'
+    if response_text != 'FINALIZING':
+        chat_history = ChatHistory(
+            user_id=user_id,
+            chat_id=chat_id,
+            message=user_message,
+            response=response_text,
+            detected_symptoms=','.join(analysis.get('symptoms_detected', [])) if analysis.get('symptoms_detected') else None,
+            emergency_detected=(analysis.get('emergency_level') == 'emergency') if analysis.get('emergency_level') else False,
+            severity=analysis.get('severity_score', 0) if analysis.get('severity_score') else 0
+        )
+        db.session.add(chat_history)
+        db.session.commit()
+        
+        # Update chat timestamp to mark as recently updated
+        chat = Chat.query.get(chat_id)
+        if chat:
+            chat.updated_at = datetime.utcnow()
+            db.session.commit()
     
     # Handle finalized booking from agent
-    if result.get('complete') and result.get('response') == 'FINALIZING':
-        ctx = result.get('session_context')
+    if result.get('complete') and response_text == 'FINALIZING':
+        ctx = result.get('session_context', {})
         
         # Create Appointment in DB
         appt = Appointment(
             user_id=user_id,
-            patient_name=ctx['patient_name'],
-            age=ctx['age'],
-            gender=ctx['gender'],
-            contact_number=ctx['contact_number'],
-            problem=ctx['symptoms'],
-            doctor_id=ctx['doctor_id'],
-            appointment_date=datetime.strptime(ctx['appointment_date'], '%Y-%m-%d').date(),
-            start_time=ctx['start_time'],
+            patient_name=ctx.get('patient_name', ''),
+            age=ctx.get('age', 0),
+            gender=ctx.get('gender', 'Other'),
+            contact_number=ctx.get('contact_number', ''),
+            problem=ctx.get('symptoms', ''),
+            doctor_id=ctx.get('doctor_id', 1),
+            appointment_date=datetime.strptime(ctx.get('appointment_date', ''), '%Y-%m-%d').date(),
+            start_time=ctx.get('start_time', ''),
             emergency_level=ctx.get('emergency_level', 'normal'),
             severity_score=ctx.get('severity_score', 5),
             status='pending'
@@ -459,46 +530,64 @@ def send_message():
         db.session.add(appt)
         db.session.commit()
         
+        # Save booking confirmation to chat history
         confirmation = f"""✅ **Your appointment has been booked successfully.**
 
 **Appointment Details:**
-- **Patient Name:** {ctx['patient_name']}
-- **Appointment Date:** {ctx['appointment_date']}
-- **Appointment Time:** {ctx['start_time']}
-- **Doctor Name:** {ctx['doctor_name']}
-- **Symptoms:** {ctx['symptoms']}
-- **Contact Number:** {ctx['contact_number']}
+- **Patient Name:** {ctx.get('patient_name', '')}
+- **Appointment Date:** {ctx.get('appointment_date', '')}
+- **Appointment Time:** {ctx.get('start_time', '')}
+- **Doctor Name:** {ctx.get('doctor_name', '')}
+- **Symptoms:** {ctx.get('symptoms', '')}
+- **Contact Number:** {ctx.get('contact_number', '')}
 
 I have sent your request to the doctor. Is there anything else I can help you with? ❤️"""
 
-        # Clear agent context after completion
-        session.pop('agent_context', None)
+        # Save confirmation message to history
+        chat_history = ChatHistory(
+            user_id=user_id,
+            chat_id=chat_id,
+            message=user_message,
+            response=confirmation,
+            detected_symptoms=ctx.get('symptoms', ''),
+            emergency_detected=False,
+            severity=ctx.get('severity_score', 5)
+        )
+        db.session.add(chat_history)
+        db.session.commit()
+        
+        # Clear agent context ONLY FOR THIS CHAT after completion
+        if 'agent_contexts' in session:
+            session['agent_contexts'].pop(chat_id, None)
+            session.modified = True
         
         return jsonify({
             'success': True,
             'response': confirmation,
-            'booking_complete': True
+            'complete': True,
+            'session_context': ctx,
+            'ui_type': None,
+            'options': [],
+            'chat_id': chat_id,
+            'booking_active': False
         })
-
-    # Save to chat history if it's a normal interaction
-    if result.get('analysis'):
-        analysis = result['analysis']
-        chat = ChatHistory(
-            user_id=user_id,
-            message=user_message,
-            response=result['response'],
-            detected_symptoms=','.join(analysis['symptoms_detected']) if analysis.get('symptoms_detected') else None,
-            emergency_detected=(analysis.get('emergency_level') == 'emergency'),
-            severity=analysis.get('severity_score', 0)
-        )
-        db.session.add(chat)
-        db.session.commit()
     
-    return jsonify({
+    # Build response with all necessary fields for frontend
+    response_data = {
         'success': True,
-        'response': result['response'],
-        'booking_active': session_context.get('state') != 'IDLE'
-    })
+        'response': result.get('response', ''),
+        'ui_type': result.get('ui_type'),
+        'options': result.get('options', []),
+        'session_context': result.get('session_context', {}),
+        'emergency_level': analysis.get('emergency_level') if analysis else None,
+        'severity': analysis.get('severity_score') if analysis else None,
+        'complete': result.get('complete', False),
+        'chat_id': chat_id,
+        'chat_title': Chat.query.get(chat_id).title if Chat.query.get(chat_id) else 'Chat',
+        'booking_active': result.get('session_context', {}).get('state', 'IDLE') != 'IDLE'
+    }
+    
+    return jsonify(response_data)
 
 @app.route('/suggest_doctor_api', methods=['POST'])
 @login_required
@@ -677,6 +766,96 @@ def check_doctor_availability(doctor_id, date, start_time, duration):
         return True, f"Doctor is available from {start_time} to {end_time}"
     except Exception as e:
         return False, str(e)
+
+
+
+# Chat Management Endpoints (for ChatGPT-like sidebar)
+
+@app.route('/get_all_chats', methods=['GET'])
+@login_required
+def get_all_chats():
+    """Get all chats for the current user that have messages, ordered by most recent"""
+    user_id = session.get('user_id')
+    
+    # Use a JOIN to reliably get only chats with messages
+    # This prevents empty chats from appearing in the list
+    chats = db.session.query(Chat).join(
+        ChatHistory, Chat.id == ChatHistory.chat_id
+    ).filter(
+        Chat.user_id == user_id,
+        ChatHistory.user_id == user_id
+    ).distinct().order_by(Chat.updated_at.desc()).all()
+    
+    print(f"DEBUG get_all_chats: user_id={user_id}, found {len(chats)} chats")
+    for chat in chats:
+        print(f"  - chat_id={chat.id}, title={chat.title}")
+    
+    return jsonify({
+        'success': True,
+        'chats': [
+            {
+                'id': chat.id,
+                'title': chat.title,
+                'created_at': chat.created_at.isoformat()
+            }
+            for chat in chats
+        ]
+    })
+
+@app.route('/get_chat_messages/<chat_id>', methods=['GET'])
+@login_required
+def get_chat_messages(chat_id):
+    """Get all messages for a specific chat"""
+    user_id = session.get('user_id')
+    
+    # Verify chat belongs to user OR chat has messages from this user
+    chat = Chat.query.filter_by(id=chat_id, user_id=user_id).first()
+    chat_messages = ChatHistory.query.filter_by(chat_id=chat_id, user_id=user_id).all()
+    
+    # Debug logging
+    print(f"DEBUG get_chat_messages: chat_id={chat_id}, user_id={user_id}")
+    print(f"  Chat exists: {chat is not None}")
+    print(f"  ChatHistory count: {len(chat_messages)}")
+    
+    # If no chat record exists but there are messages, or chat exists, allow access
+    if not chat and not chat_messages:
+        print(f"  ERROR: Neither Chat nor ChatHistory found for chat_id={chat_id}, user_id={user_id}")
+        return jsonify({'success': False, 'error': 'Chat not found'}), 404
+    
+    # Get all messages ordered by timestamp
+    messages = ChatHistory.query.filter_by(chat_id=chat_id, user_id=user_id).order_by(ChatHistory.timestamp.asc()).all()
+    
+    return jsonify({
+        'success': True,
+        'messages': [
+            {
+                'message': msg.message,
+                'response': msg.response,
+                'timestamp': msg.timestamp.isoformat()
+            }
+            for msg in messages
+        ]
+    })
+
+@app.route('/delete_chat/<chat_id>', methods=['POST'])
+@login_required
+def delete_chat(chat_id):
+    """Delete a chat and all its messages"""
+    user_id = session.get('user_id')
+    
+    # Verify chat belongs to user
+    chat = Chat.query.filter_by(id=chat_id, user_id=user_id).first()
+    if not chat:
+        return jsonify({'success': False, 'error': 'Chat not found'}), 404
+    
+    # Delete all messages in the chat
+    ChatHistory.query.filter_by(chat_id=chat_id).delete()
+    
+    # Delete the chat
+    db.session.delete(chat)
+    db.session.commit()
+    
+    return jsonify({'success': True})
 
 if __name__ == '__main__':
     app.run(debug=True)

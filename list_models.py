@@ -2,8 +2,13 @@
 """List available Gemini models"""
 
 import google.generativeai as genai
+import os
+from dotenv import load_dotenv
 
-GEMINI_API_KEY = 'AIzaSyA81_3WJr8C3-3wEXXD1RluIYyvf2lnLXc'
+# Load environment variables from .env file
+load_dotenv()
+
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
 genai.configure(api_key=GEMINI_API_KEY)
 
 print("Available models:")

@@ -3,9 +3,13 @@ import os
 import re
 import json
 from datetime import datetime, timedelta
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Configure Gemini API
-GEMINI_API_KEY = 'AIzaSyA81_3WJr8C3-3wEXXD1RluIYyvf2lnLXc'
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
 genai.configure(api_key=GEMINI_API_KEY)
 model = genai.GenerativeModel('gemini-2.5-flash') 
 
@@ -206,71 +210,146 @@ Provide your response in JSON format with these fields:
             # Offer optional doctor selection
             spec = session_context.get('suggested_specialization', 'General Physician')
             doctors = self.doctor_query_func(spec)
-            if not doctors: doctors = self.doctor_query_func()[:3]
+            if not doctors: doctors = self.doctor_query_func()[:5]
             
             doc_list = "\n".join([f"• {d.name} ({d.specialization})" for d in doctors])
             session_context['state'] = 'COLLECT_DOCTOR'
+            
+            # Store doctors info for frontend UI
+            session_context['available_doctors'] = [
+                {'id': d.id, 'name': d.name, 'specialization': d.specialization}
+                for d in doctors
+            ]
+            
             return {
-                'response': f"Based on your symptoms, I recommend a **{spec}**. \n\nOur available doctors are:\n{doc_list}\n\nWhich doctor would you prefer? (You can also say 'any' or provide a name)",
-                'session_context': session_context
+                'response': f"Based on your symptoms, I recommend a **{spec}**. \n\nOur available doctors are:\n{doc_list}\n\nWhich doctor would you prefer?",
+                'session_context': session_context,
+                'ui_type': 'doctor_selection',
+                'options': [
+                    {'label': f"{d.name} ({d.specialization})", 'value': str(d.id)}
+                    for d in doctors
+                ] + [{'label': 'Any Available Doctor', 'value': 'any'}]
             }
 
         elif state == 'COLLECT_DOCTOR':
             selected_doc = None
-            if 'any' in msg_lower:
+            if msg == 'any' or 'any' in msg_lower:
                 spec = session_context.get('suggested_specialization')
                 selected_doc = self.doctor_query_func(spec)[0] if self.doctor_query_func(spec) else self.doctor_query_func()[0]
             else:
-                all_docs = self.doctor_query_func()
-                for d in all_docs:
-                    if d.name.lower() in msg_lower:
-                        selected_doc = d
-                        break
+                # Try to match by ID first (from button click)
+                try:
+                    doc_id = int(msg)
+                    all_docs = self.doctor_query_func()
+                    for d in all_docs:
+                        if d.id == doc_id:
+                            selected_doc = d
+                            break
+                except:
+                    # Try to match by name
+                    all_docs = self.doctor_query_func()
+                    for d in all_docs:
+                        if d.name.lower() in msg_lower:
+                            selected_doc = d
+                            break
             
             if not selected_doc:
-                return {'response': "I couldn't find that doctor. Please choose one from the list or say 'any'.", 'session_context': session_context}
+                return {'response': "I couldn't find that doctor. Please choose one from the list.", 'session_context': session_context}
             
             session_context['doctor_id'] = selected_doc.id
             session_context['doctor_name'] = selected_doc.name
             session_context['state'] = 'COLLECT_DATE'
-            return {'response': f"Great, I've noted {selected_doc.name}. What **Date** would you like the appointment for? (e.g., YYYY-MM-DD or 'tomorrow')", 'session_context': session_context}
+            
+            # Generate date options (next 7 days)
+            date_options = []
+            today = datetime.now().date()
+            for i in range(7):
+                future_date = today + timedelta(days=i)
+                label = 'Today' if i == 0 else 'Tomorrow' if i == 1 else future_date.strftime('%a, %b %d')
+                date_options.append({'label': label, 'value': future_date.isoformat()})
+            
+            session_context['date_options'] = date_options
+            
+            return {
+                'response': f"Great! I've selected **{selected_doc.name}**. What **Date** would you like the appointment for?",
+                'session_context': session_context,
+                'ui_type': 'date_selection',
+                'options': date_options
+            }
 
         elif state == 'COLLECT_DATE':
+            # Try to parse date from selection
             target_date = None
-            if 'today' in msg_lower: target_date = datetime.now().date()
-            elif 'tomorrow' in msg_lower: target_date = datetime.now().date() + timedelta(days=1)
-            else:
-                try:
-                    match = re.search(r'(\d{4}-\d{1,2}-\d{1,2})', msg)
-                    if match:
-                        target_date = datetime.strptime(match.group(1), '%Y-%m-%d').date()
-                except: pass
+            try:
+                # If it looks like ISO format (from button click)
+                if re.match(r'\d{4}-\d{2}-\d{2}', msg):
+                    target_date = datetime.strptime(msg, '%Y-%m-%d').date()
+                else:
+                    raise ValueError()
+            except:
+                # Try natural language
+                if 'today' in msg_lower: target_date = datetime.now().date()
+                elif 'tomorrow' in msg_lower: target_date = datetime.now().date() + timedelta(days=1)
+                else:
+                    try:
+                        match = re.search(r'(\d{4}-\d{1,2}-\d{1,2})', msg)
+                        if match:
+                            target_date = datetime.strptime(match.group(1), '%Y-%m-%d').date()
+                    except: pass
             
             if not target_date:
-                return {'response': "Please provide the date in YYYY-MM-DD format (e.g., 2024-12-25) or say 'tomorrow'.", 'session_context': session_context}
+                return {'response': "Please provide the date or select from the options.", 'session_context': session_context}
             
             session_context['appointment_date'] = target_date.isoformat()
             session_context['state'] = 'COLLECT_TIME'
-            return {'response': "And what **Time** would you prefer? (e.g., 10:00 AM)", 'session_context': session_context}
+            
+            # Generate time options (9 AM to 5 PM, 30 min intervals)
+            time_options = []
+            for hour in range(9, 17):
+                for minute in [0, 30]:
+                    time_str = f"{hour:02d}:{minute:02d}"
+                    display_str = datetime.strptime(time_str, '%H:%M').strftime('%I:%M %p')
+                    time_options.append({'label': display_str, 'value': time_str})
+            
+            session_context['time_options'] = time_options
+            
+            return {
+                'response': f"Perfect! Appointment set for **{target_date.strftime('%A, %B %d, %Y')}**. What **Time** would you prefer?",
+                'session_context': session_context,
+                'ui_type': 'time_selection',
+                'options': time_options
+            }
 
         elif state == 'COLLECT_TIME':
-            # Simple time validation (check for AM/PM or HH:MM)
-            if not re.search(r'\d{1,2}:\d{2}', msg) and 'am' not in msg_lower and 'pm' not in msg_lower:
-                return {'response': "Please specify a clear time, e.g., '10:30 AM' or '14:00'.", 'session_context': session_context}
+            # Validate time format
+            if not re.search(r'\d{2}:\d{2}', msg):
+                return {'response': "Please select a time from the options or specify time in HH:MM format.", 'session_context': session_context}
             
             session_context['start_time'] = msg
             session_context['state'] = 'CONFIRM_BOOKING'
             
-            summary = f"""### 🏥 Appointment Summary
+            # Format date nicely
+            appt_date = datetime.fromisoformat(session_context['appointment_date'])
+            formatted_date = appt_date.strftime('%A, %B %d, %Y')
+            
+            summary = f"""### 🏥 Appointment Confirmation
 **Patient:** {session_context['patient_name']} ({session_context['age']}y, {session_context['gender']})
 **Contact:** {session_context['contact_number']}
 **Symptoms:** {session_context['symptoms']}
 **Doctor:** {session_context['doctor_name']}
-**Date:** {session_context['appointment_date']}
-**Time:** {session_context['start_time']}
+**Date:** {formatted_date}
+**Time:** {msg}
 
-Does this look correct? (Yes/No)"""
-            return {'response': summary, 'session_context': session_context}
+Please confirm this appointment."""
+            return {
+                'response': summary,
+                'session_context': session_context,
+                'ui_type': 'confirmation',
+                'options': [
+                    {'label': '✅ Confirm & Book', 'value': 'yes'},
+                    {'label': '❌ Cancel', 'value': 'no'}
+                ]
+            }
 
         elif state == 'CONFIRM_BOOKING':
             if any(word in msg_lower for word in ['yes', 'yeah', 'correct', 'ok', 'sure']):
