@@ -1,6 +1,7 @@
 import StatusBadge from './StatusBadge';
+import { FaTrash } from 'react-icons/fa';
 
-function AppointmentTable({ appointments = [] }) {
+function AppointmentTable({ appointments = [], onDelete }) {
   if (!appointments.length) {
     return (
       <div className="text-center text-muted" style={{ padding: 'var(--spacing-xl)' }}>
@@ -19,6 +20,7 @@ function AppointmentTable({ appointments = [] }) {
             <th>Priority</th>
             <th>Date & Time</th>
             <th>Status</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -56,6 +58,32 @@ function AppointmentTable({ appointments = [] }) {
                   </div>
                 </td>
                 <td><StatusBadge status={item.status} /></td>
+                <td>
+                  <button
+                    onClick={() => onDelete && onDelete(item.id)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#ef4444',
+                      cursor: 'pointer',
+                      padding: '8px',
+                      borderRadius: '50%',
+                      transition: 'all 0.2s',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.target.style.background = '#fef2f2';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.background = 'none';
+                    }}
+                    title="Delete Appointment"
+                  >
+                    <FaTrash size={16} />
+                  </button>
+                </td>
               </tr>
             );
           })}

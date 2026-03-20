@@ -4,7 +4,7 @@ import { FaUserMd, FaClock, FaClipboardList, FaComments } from 'react-icons/fa';
 import Navbar from '../components/Layout/Navbar';
 import AppointmentTable from '../components/AppointmentTable';
 import Card from '../components/Widget/Card';
-import { apiGet } from '../api/client';
+import { apiGet, apiPost } from '../api/client';
 
 const statusOptions = ['all', 'pending', 'approved', 'completed'];
 
@@ -19,21 +19,33 @@ function DashboardPage() {
     return () => clearInterval(interval);
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
+  const fetchAppointments = () => {
     setError('');
     apiGet('/api/appointments')
       .then((data) => {
-        if (cancelled) return;
         setAppointments(data?.appointments ?? []);
       })
       .catch((err) => {
-        if (cancelled) return;
         setAppointments([]);
         setError(err?.message || 'Failed to load appointments');
       });
-    return () => { cancelled = true; };
+  };
+
+  useEffect(() => {
+    fetchAppointments();
   }, []);
+
+  const handleDeleteAppointment = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this appointment?')) return;
+    try {
+      const resp = await apiPost(`/api/appointments/delete/${id}`, {});
+      if (resp?.success) {
+        fetchAppointments();
+      }
+    } catch (err) {
+      setError('Failed to delete appointment');
+    }
+  };
 
   const filteredAppointments = useMemo(() => {
     if (selectedStatus === 'all') return appointments;
@@ -110,7 +122,10 @@ function DashboardPage() {
               {error}
             </div>
           ) : null}
-          <AppointmentTable appointments={filteredAppointments} />
+          <AppointmentTable
+            appointments={filteredAppointments}
+            onDelete={handleDeleteAppointment}
+          />
         </Card>
       </main>
     </div>

@@ -4,7 +4,7 @@ import Card from '../components/Widget/Card';
 import { apiGet, apiPost } from '../api/client';
 import {
   FaClipboardList, FaHourglassHalf, FaCheckCircle, FaCheckDouble,
-  FaExclamationCircle, FaCalendarDay, FaClock, FaPhoneAlt, FaTimesCircle, FaCog
+  FaExclamationCircle, FaCalendarDay, FaClock, FaPhoneAlt, FaTimesCircle, FaCog, FaTrash
 } from 'react-icons/fa';
 
 const statusOptions = ['all', 'pending', 'approved', 'completed', 'emergency', 'today'];
@@ -79,6 +79,18 @@ function DoctorDashboardPage() {
       load();
     } catch (err) {
       setError(err?.message || 'Failed to update appointment');
+    }
+  };
+
+  const deleteAppointment = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this appointment record?')) return;
+    try {
+      const resp = await apiPost(`/api/doctor/appointments/delete/${id}`, {});
+      if (resp?.success) {
+        load();
+      }
+    } catch (err) {
+      setError('Failed to delete appointment');
     }
   };
 
@@ -241,50 +253,63 @@ function DoctorDashboardPage() {
                   </tr>
                 ) : (
                   filteredAppointments.map(app => (
-                    <tr key={app.id} style={{ borderBottom: '1px solid #e2e8f0', background: app.emergency_level === 'high' ? '#fef2f2' : 'white', transition: 'background 0.2s' }}>
+                    <tr key={app.id} style={{ borderBottom: '1px solid #e2e8f0', background: app.emergency_level === 'high' ? 'linear-gradient(to right, #fff1f2, #fff)' : 'white', transition: 'all 0.2s' }}>
                       <td style={{ padding: '16px' }}>
-                        <div style={{ fontWeight: 600, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          {app.patient_name}
-                        </div>
-                        <div style={{ color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
-                          <FaPhoneAlt size={10} /> {app.contact_number || 'N/A'}
-                        </div>
-                        <div style={{ color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px', fontSize: '12px' }}>
-                          📍 {app.location || 'Not Specified'}
+                        <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '15px' }}>{app.patient_name}</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '6px' }}>
+                          <span style={{ color: '#64748b', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}>
+                            <FaPhoneAlt size={10} color="#94a3b8" /> {app.contact_number || 'N/A'}
+                          </span>
+                          <span style={{ color: '#64748b', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}>
+                            📍 {app.location || 'Not Specified'}
+                          </span>
                         </div>
                       </td>
                       <td style={{ padding: '16px' }}>
-                        <div style={{ color: '#334155', fontWeight: 500 }}>{app.appointment_date || '—'}</div>
-                        <div style={{ color: '#64748b', marginTop: '2px' }}>
+                        <div style={{ color: '#334155', fontWeight: 600 }}>{app.appointment_date || '—'}</div>
+                        <div style={{ color: '#94a3b8', fontSize: '12px', marginTop: '4px' }}>
+                          <FaClock size={10} style={{ marginRight: '4px' }} />
                           {app.start_time ? `${app.start_time} - ${app.end_time}` : 'TBD'}
                         </div>
                       </td>
                       <td style={{ padding: '16px' }}>
-                        <div style={{ color: '#334155', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }} title={app.problem}>
+                        <div style={{ color: '#475569', fontSize: '13px', lineHeight: '1.5', maxWidth: '300px' }}>
                           {app.problem}
                         </div>
                       </td>
-                      <td style={{ padding: '16px', verticalAlign: 'middle' }}>
-                        <span style={{ fontSize: '12px', fontWeight: 600, textTransform: 'capitalize', padding: '4px 8px', borderRadius: '12px', background: app.emergency_level === 'high' ? '#fef2f2' : (app.emergency_level === 'medium' ? '#fff7ed' : '#f0fdf4'), color: app.emergency_level === 'high' ? '#ef4444' : (app.emergency_level === 'medium' ? '#ea580c' : '#16a34a'), border: '1px solid #e2e8f0' }}>
-                          {app.emergency_level || 'normal checkup'}
+                      <td style={{ padding: '16px' }}>
+                        <span style={{
+                          fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px',
+                          padding: '4px 10px', borderRadius: '6px',
+                          background: app.emergency_level === 'high' ? '#fee2e2' : (app.emergency_level === 'medium' ? '#ffedd5' : '#f0fdf4'),
+                          color: app.emergency_level === 'high' ? '#dc2626' : (app.emergency_level === 'medium' ? '#ea580c' : '#16a34a'),
+                          border: '1px solid currentColor'
+                        }}>
+                          {app.emergency_level || 'normal'}
                         </span>
                       </td>
-                      <td style={{ padding: '16px', verticalAlign: 'middle' }}>
+                      <td style={{ padding: '16px' }}>
                         {getStatusBadge(app.status)}
                       </td>
-                      <td style={{ padding: '16px', textAlign: 'right', verticalAlign: 'middle' }}>
-                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                      <td style={{ padding: '16px', textAlign: 'right' }}>
+                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', alignItems: 'center' }}>
                           {app.status === 'pending' && (
                             <>
                               <button
                                 onClick={() => openAssign(app.id)}
-                                style={{ padding: '6px 12px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}
+                                title="Schedule Appointment"
+                                style={{ padding: '8px 14px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', transition: 'transform 0.2s' }}
+                                onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+                                onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
                               >
                                 <FaClock size={12} /> Assign
                               </button>
                               <button
                                 onClick={() => updateStatus(app.id, 'rejected')}
-                                style={{ padding: '6px 12px', background: '#ef4444', color: 'white', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}
+                                title="Decline Appointment"
+                                style={{ padding: '8px 14px', background: '#f43f5e', color: 'white', border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', transition: 'transform 0.2s' }}
+                                onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+                                onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
                               >
                                 <FaTimesCircle size={12} /> Reject
                               </button>
@@ -293,11 +318,27 @@ function DoctorDashboardPage() {
                           {app.status === 'approved' && (
                             <button
                               onClick={() => updateStatus(app.id, 'completed')}
-                              style={{ padding: '6px 12px', background: '#10b981', color: 'white', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}
+                              title="Mark as Completed"
+                              style={{ padding: '8px 14px', background: '#10b981', color: 'white', border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', transition: 'transform 0.2s' }}
+                              onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+                              onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
                             >
                               <FaCheckCircle size={12} /> Complete
                             </button>
                           )}
+                          <button
+                            onClick={() => deleteAppointment(app.id)}
+                            style={{
+                              padding: '8px', background: '#f8fafc', color: '#ef4444',
+                              border: '1px solid #fee2e2', borderRadius: '8px',
+                              cursor: 'pointer', display: 'flex', alignItems: 'center', transition: 'all 0.2s'
+                            }}
+                            title="Remove Record"
+                            onMouseEnter={(e) => { e.currentTarget.style.background = '#fef2f2'; e.currentTarget.style.transform = 'scale(1.1)'; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.transform = 'scale(1)'; }}
+                          >
+                            <FaTrash size={14} />
+                          </button>
                         </div>
                       </td>
                     </tr>

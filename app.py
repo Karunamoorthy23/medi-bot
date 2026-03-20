@@ -998,5 +998,41 @@ def api_doctor_send_message():
     })
 
 
+@app.route('/api/appointments/delete/<int:appointment_id>', methods=['POST', 'DELETE'])
+@cross_origin(supports_credentials=True)
+@login_required
+def api_delete_appointment(appointment_id):
+    user_id = session.get('user_id')
+    appointment = Appointment.query.filter_by(id=appointment_id, user_id=user_id).first()
+    
+    if not appointment:
+        return jsonify({'success': False, 'message': 'Appointment not found'}), 404
+        
+    try:
+        db.session.delete(appointment)
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Appointment deleted successfully'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/api/doctor/appointments/delete/<int:appointment_id>', methods=['POST', 'DELETE'])
+@cross_origin(supports_credentials=True)
+@doctor_login_required
+def api_doctor_delete_appointment(appointment_id):
+    doctor_id = session.get('doctor_id')
+    appointment = Appointment.query.filter_by(id=appointment_id, doctor_id=doctor_id).first()
+    
+    if not appointment:
+        return jsonify({'success': False, 'message': 'Appointment not found'}), 404
+        
+    try:
+        db.session.delete(appointment)
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Appointment deleted successfully'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
 if __name__ == '__main__':
     app.run(debug=True)
