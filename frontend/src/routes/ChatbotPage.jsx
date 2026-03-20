@@ -125,7 +125,7 @@ function ChatbotPage() {
         const updatedChats = chats.filter(c => c.id !== chatId);
         setChats(updatedChats);
         setError('Chat not found or was deleted');
-        
+
         // Switch to another chat or show empty state
         if (updatedChats.length > 0) {
           setCurrentChatId(updatedChats[0].id);
@@ -154,7 +154,7 @@ function ChatbotPage() {
     setNextId(2);
     setInput('');
     setError('');
-    
+
     // Don't add to chats list yet - wait for first message to be sent
     // This prevents "New Conversation" duplicates
   };
@@ -163,15 +163,15 @@ function ChatbotPage() {
   const deleteChat = async (chatId, e) => {
     e.stopPropagation();
     e.preventDefault();
-    
+
     try {
       const response = await apiPost(`/delete_chat/${chatId}`, {});
-      
+
       if (response?.success) {
         // Remove from local state
         const updatedChats = chats.filter(c => c.id !== chatId);
         setChats(updatedChats);
-        
+
         // If deleted chat was currently open, switch to another or create new
         if (currentChatId === chatId) {
           if (updatedChats.length > 0) {
@@ -218,20 +218,25 @@ function ChatbotPage() {
     try {
       const data = await apiPost('/send_message', { message: outgoing, chat_id: currentChatId });
 
+      const activeChatId = data?.chat_id || currentChatId;
+      if (!currentChatId && activeChatId) {
+        setCurrentChatId(activeChatId);
+      }
+
       // Check if this is a new chat (not yet in the list) and add it
-      if (!chats.find(c => c.id === currentChatId)) {
+      if (!chats.find(c => c.id === activeChatId)) {
         // Use title from backend response (saved from first message)
         const chatTitle = data?.chat_title || outgoing.substring(0, 40) + (outgoing.length > 40 ? '...' : '');
-        const newChat = { 
-          id: currentChatId, 
-          title: chatTitle || 'New Conversation', 
-          created_at: new Date().toISOString() 
+        const newChat = {
+          id: activeChatId,
+          title: chatTitle || 'New Conversation',
+          created_at: new Date().toISOString()
         };
         setChats([newChat, ...chats]);
       } else {
         // If this is an existing chat and we have a new title from backend, update it
         if (data?.chat_title && messages.length <= 2) {
-          setChats(chats.map(c => c.id === currentChatId ? { ...c, title: data.chat_title } : c));
+          setChats(chats.map(c => c.id === activeChatId ? { ...c, title: data.chat_title } : c));
         }
       }
 
@@ -290,13 +295,18 @@ function ChatbotPage() {
     // Add user selection as message
     const selectedOption = messages[messages.length - 1]?.options?.find(opt => opt.value === value);
     const userText = selectedOption?.label || value;
-    
+
     setMessages((prev) => [...prev, { id: `msg-${userId}`, sender: 'user', text: userText, ui_type: null, options: [] }]);
     setLoading(true);
     setError('');
 
     try {
       const data = await apiPost('/send_message', { message: value, chat_id: currentChatId });
+
+      const activeChatId = data?.chat_id || currentChatId;
+      if (!currentChatId && activeChatId) {
+        setCurrentChatId(activeChatId);
+      }
 
       // Small delay so typing indicator is visible
       await new Promise((r) => setTimeout(r, 650));
@@ -351,7 +361,7 @@ function ChatbotPage() {
   return (
     <div style={{ display: 'flex', height: '100vh', flexDirection: 'column' }}>
       <Navbar />
-      
+
       {/* Authentication Error */}
       {!isAuthenticated && (
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f5f5f5' }}>
@@ -371,251 +381,251 @@ function ChatbotPage() {
           </Card>
         </div>
       )}
-      
+
       {isAuthenticated && (
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-        {/* Sidebar */}
-        <div
-          style={{
-            width: sidebarOpen ? '280px' : '0',
-            backgroundColor: '#1a1a2e',
-            color: 'white',
-            display: 'flex',
-            flexDirection: 'column',
-            borderRight: '1px solid #444',
-            transition: 'width 0.3s ease',
-            overflow: 'hidden',
-            zIndex: 1000,
-            position: 'relative',
-          }}
-        >
-          {/* Sidebar Header with Close Button */}
+        <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+          {/* Sidebar */}
           <div
             style={{
+              width: sidebarOpen ? '280px' : '0',
+              backgroundColor: '#1a1a2e',
+              color: 'white',
               display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '12px 12px',
-              borderBottom: '1px solid #444',
-              minHeight: '50px',
+              flexDirection: 'column',
+              borderRight: '1px solid #444',
+              transition: 'width 0.3s ease',
+              overflow: 'hidden',
+              zIndex: 1000,
+              position: 'relative',
             }}
           >
-            <h3 style={{ margin: 0, fontSize: '14px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px', color: '#999', opacity: sidebarOpen ? 1 : 0 }}>
-              Chats
-            </h3>
-            <button
-              onClick={() => setSidebarOpen(!sidebarOpen)}
+            {/* Sidebar Header with Close Button */}
+            <div
               style={{
-                background: 'transparent',
-                border: 'none',
-                color: '#999',
-                cursor: 'pointer',
-                padding: '8px',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '16px',
-                transition: 'all 0.2s ease',
-                borderRadius: '6px',
-              }}
-              title={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
-              onMouseEnter={(e) => {
-                e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
-                e.target.style.color = '#fff';
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.backgroundColor = 'transparent';
-                e.target.style.color = '#999';
+                justifyContent: 'space-between',
+                padding: '12px 12px',
+                borderBottom: '1px solid #444',
+                minHeight: '50px',
               }}
             >
-              {sidebarOpen ? <FaChevronLeft size={16} /> : <FaChevronRight size={16} />}
-            </button>
-          </div>
-
-          {/* New Chat Button */}
-          <button
-            onClick={createNewChat}
-            style={{
-              margin: '12px',
-              padding: '10px 16px',
-              backgroundColor: '#2d2d4a',
-              color: 'white',
-              border: '1px solid #444',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px',
-              fontSize: '14px',
-              fontWeight: '500',
-              transition: 'background-color 0.2s ease',
-              opacity: sidebarOpen ? 1 : 0,
-              pointerEvents: sidebarOpen ? 'auto' : 'none',
-            }}
-            onMouseEnter={(e) => e.target.style.backgroundColor = '#3a3a5a'}
-            onMouseLeave={(e) => e.target.style.backgroundColor = '#2d2d4a'}
-            title="Create new chat"
-          >
-            <FaPlus size={14} />
-            {sidebarOpen && <span>New Chat</span>}
-          </button>
-
-          {/* Chat List */}
-          <div style={{ flex: 1, overflowY: 'auto', padding: '8px 8px' }}>
-            {sidebarOpen && (
-              <div style={{ fontSize: '12px', fontWeight: '600', color: '#999', padding: '8px 12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                Chat History
-              </div>
-            )}
-            {chats.map((chat) => (
-              <div
-                key={chat.id}
+              <h3 style={{ margin: 0, fontSize: '14px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px', color: '#999', opacity: sidebarOpen ? 1 : 0 }}>
+                Chats
+              </h3>
+              <button
+                onClick={() => setSidebarOpen(!sidebarOpen)}
                 style={{
-                  marginBottom: '6px',
-                  borderRadius: '6px',
-                  overflow: 'hidden',
-                  backgroundColor: currentChatId === chat.id ? '#2d2d4a' : 'transparent',
-                  transition: 'background-color 0.2s ease',
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#999',
+                  cursor: 'pointer',
+                  padding: '8px',
                   display: 'flex',
                   alignItems: 'center',
-                  position: 'relative',
+                  justifyContent: 'center',
+                  fontSize: '16px',
+                  transition: 'all 0.2s ease',
+                  borderRadius: '6px',
+                }}
+                title={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+                onMouseEnter={(e) => {
+                  e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+                  e.target.style.color = '#fff';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.backgroundColor = 'transparent';
+                  e.target.style.color = '#999';
                 }}
               >
-                <button
-                  onClick={() => {
-                    setCurrentChatId(chat.id);
-                    loadChatMessages(chat.id);
-                    // Only close sidebar on mobile (width < 768px)
-                    if (window.innerWidth < 768) {
-                      setSidebarOpen(false);
-                    }
-                  }}
+                {sidebarOpen ? <FaChevronLeft size={16} /> : <FaChevronRight size={16} />}
+              </button>
+            </div>
+
+            {/* New Chat Button */}
+            <button
+              onClick={createNewChat}
+              style={{
+                margin: '12px',
+                padding: '10px 16px',
+                backgroundColor: '#2d2d4a',
+                color: 'white',
+                border: '1px solid #444',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                fontSize: '14px',
+                fontWeight: '500',
+                transition: 'background-color 0.2s ease',
+                opacity: sidebarOpen ? 1 : 0,
+                pointerEvents: sidebarOpen ? 'auto' : 'none',
+              }}
+              onMouseEnter={(e) => e.target.style.backgroundColor = '#3a3a5a'}
+              onMouseLeave={(e) => e.target.style.backgroundColor = '#2d2d4a'}
+              title="Create new chat"
+            >
+              <FaPlus size={14} />
+              {sidebarOpen && <span>New Chat</span>}
+            </button>
+
+            {/* Chat List */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '8px 8px' }}>
+              {sidebarOpen && (
+                <div style={{ fontSize: '12px', fontWeight: '600', color: '#999', padding: '8px 12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  Chat History
+                </div>
+              )}
+              {chats.map((chat) => (
+                <div
+                  key={chat.id}
                   style={{
-                    flex: 1,
-                    padding: '10px 12px',
-                    backgroundColor: 'transparent',
-                    color: currentChatId === chat.id ? 'white' : '#ccc',
-                    border: 'none',
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                    fontSize: '14px',
-                    whiteSpace: 'nowrap',
+                    marginBottom: '6px',
+                    borderRadius: '6px',
                     overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    transition: 'color 0.2s ease',
+                    backgroundColor: currentChatId === chat.id ? '#2d2d4a' : 'transparent',
+                    transition: 'background-color 0.2s ease',
+                    display: 'flex',
+                    alignItems: 'center',
+                    position: 'relative',
                   }}
-                  onMouseEnter={(e) => {
-                    if (currentChatId !== chat.id) e.target.style.color = 'white';
-                  }}
-                  onMouseLeave={(e) => {
-                    if (currentChatId !== chat.id) e.target.style.color = '#ccc';
-                  }}
-                  title={chat.title}
                 >
-                  {chat.title}
-                </button>
-                {currentChatId === chat.id && (
                   <button
-                    onClick={(e) => deleteChat(chat.id, e)}
+                    onClick={() => {
+                      setCurrentChatId(chat.id);
+                      loadChatMessages(chat.id);
+                      // Only close sidebar on mobile (width < 768px)
+                      if (window.innerWidth < 768) {
+                        setSidebarOpen(false);
+                      }
+                    }}
                     style={{
-                      background: 'none',
+                      flex: 1,
+                      padding: '10px 12px',
+                      backgroundColor: 'transparent',
+                      color: currentChatId === chat.id ? 'white' : '#ccc',
                       border: 'none',
-                      color: '#999',
                       cursor: 'pointer',
-                      padding: '6px 12px',
+                      textAlign: 'left',
+                      fontSize: '14px',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
                       transition: 'color 0.2s ease',
                     }}
-                    title="Delete chat"
-                    onMouseEnter={(e) => e.target.style.color = '#ff4444'}
-                    onMouseLeave={(e) => e.target.style.color = '#999'}
+                    onMouseEnter={(e) => {
+                      if (currentChatId !== chat.id) e.target.style.color = 'white';
+                    }}
+                    onMouseLeave={(e) => {
+                      if (currentChatId !== chat.id) e.target.style.color = '#ccc';
+                    }}
+                    title={chat.title}
                   >
-                    <FaTrash size={14} />
+                    {chat.title}
                   </button>
-                )}
-              </div>
-            ))}
+                  {currentChatId === chat.id && (
+                    <button
+                      onClick={(e) => deleteChat(chat.id, e)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#999',
+                        cursor: 'pointer',
+                        padding: '6px 12px',
+                        transition: 'color 0.2s ease',
+                      }}
+                      title="Delete chat"
+                      onMouseEnter={(e) => e.target.style.color = '#ff4444'}
+                      onMouseLeave={(e) => e.target.style.color = '#999'}
+                    >
+                      <FaTrash size={14} />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
 
-        {/* Main Chat Area */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative' }}>
-          {/* Collapsed Sidebar Toggle & Mobile Hamburger */}
-          {!sidebarOpen && (
-            <button
-              onClick={() => setSidebarOpen(true)}
-              style={{
-                position: 'absolute',
-                top: '12px',
-                left: '12px',
-                zIndex: 999,
-                background: 'transparent',
-                border: 'none',
-                color: '#999',
-                cursor: 'pointer',
-                padding: '10px',
-                borderRadius: '6px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '16px',
-                transition: 'all 0.2s ease',
-              }}
-              title="Expand sidebar"
-              onMouseEnter={(e) => {
-                e.target.style.backgroundColor = 'rgba(117, 106, 106, 0.15)';
-                e.target.style.color = '#fff';
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.backgroundColor = 'transparent';
-                e.target.style.border = '1px solid #999';
-                e.target.style.color = '#fff';
-              }}
-            >
-              <FaBars size={18} />
-            </button>
-          )}
+          {/* Main Chat Area */}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative' }}>
+            {/* Collapsed Sidebar Toggle & Mobile Hamburger */}
+            {!sidebarOpen && (
+              <button
+                onClick={() => setSidebarOpen(true)}
+                style={{
+                  position: 'absolute',
+                  top: '12px',
+                  left: '12px',
+                  zIndex: 999,
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#999',
+                  cursor: 'pointer',
+                  padding: '10px',
+                  borderRadius: '6px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '16px',
+                  transition: 'all 0.2s ease',
+                }}
+                title="Expand sidebar"
+                onMouseEnter={(e) => {
+                  e.target.style.backgroundColor = 'rgba(117, 106, 106, 0.15)';
+                  e.target.style.color = '#fff';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.backgroundColor = 'transparent';
+                  e.target.style.border = '1px solid #999';
+                  e.target.style.color = '#fff';
+                }}
+              >
+                <FaBars size={18} />
+              </button>
+            )}
 
-          {/* Mobile Sidebar Toggle (only visible on mobile) */}
-          {sidebarOpen && window.innerWidth < 768 && (
-            <button
-              onClick={() => setSidebarOpen(false)}
-              style={{
-                position: 'absolute',
-                top: '12px',
-                left: '12px',
-                zIndex: 999,
-                background: 'transparent',
-                border: 'none',
-                color: '#999',
-                cursor: 'pointer',
-                padding: '10px',
-                borderRadius: '6px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '16px',
-                transition: 'all 0.2s ease',
-              }}
-              title="Close sidebar"
-              onMouseEnter={(e) => {
-                e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.15)';
-                e.target.style.color = '#fff';
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.backgroundColor = 'transparent';
-                e.target.style.color = '#999';
-              }}
-            >
-              <FaTimes size={18} />
-            </button>
-          )}
+            {/* Mobile Sidebar Toggle (only visible on mobile) */}
+            {sidebarOpen && window.innerWidth < 768 && (
+              <button
+                onClick={() => setSidebarOpen(false)}
+                style={{
+                  position: 'absolute',
+                  top: '12px',
+                  left: '12px',
+                  zIndex: 999,
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#999',
+                  cursor: 'pointer',
+                  padding: '10px',
+                  borderRadius: '6px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '16px',
+                  transition: 'all 0.2s ease',
+                }}
+                title="Close sidebar"
+                onMouseEnter={(e) => {
+                  e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.15)';
+                  e.target.style.color = '#fff';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.backgroundColor = 'transparent';
+                  e.target.style.color = '#999';
+                }}
+              >
+                <FaTimes size={18} />
+              </button>
+            )}
 
-          <main style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', marginTop: sidebarOpen ? '0' : '0px' }}>
-            <Card title="AI Medical Consultation" className="mb-md" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-              <div className="chat-container" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                <style>
-                  {`
+            <main style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', marginTop: sidebarOpen ? '0' : '0px' }}>
+              <Card title="AI Medical Consultation" className="mb-md" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                <div className="chat-container" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                  <style>
+                    {`
                     @keyframes chatbotDot { 
                       0%, 60%, 100% { transform: translateY(0); opacity: 0.35; } 
                       30% { transform: translateY(-4px); opacity: 1; } 
@@ -731,145 +741,145 @@ function ChatbotPage() {
                       box-shadow: 0 4px 8px rgba(220, 53, 69, 0.3);
                     }
                   `}
-                </style>
-                <div className="chat-history" style={{ flex: 1, overflowY: 'auto', padding: '16px', backgroundColor: '#f5f5f5' }}>
-                  {messages.map((msg, idx) => (
-                    <div key={msg.id} style={{ display: 'flex', marginBottom: '12px', justifyContent: msg.sender === 'user' ? 'flex-end' : 'flex-start', alignItems: 'flex-end', gap: '8px' }}>
-                      {msg.sender === 'bot' && <div style={{ background: 'white', padding: '6px', borderRadius: '50%', color: 'var(--primary-color)', flexShrink: 0 }}><FaRobot size={14} /></div>}
-                      
-                      <div style={{ 
-                        maxWidth: '70%',
-                        backgroundColor: msg.sender === 'user' ? 'var(--primary-color)' : '#ffffff',
-                        color: msg.sender === 'user' ? '#ffffff' : '#333333',
-                        padding: '10px 14px',
-                        borderRadius: msg.sender === 'user' ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
-                        wordBreak: 'break-word',
-                        whiteSpace: 'pre-wrap',
-                        boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
-                      }}>
-                        {/* Only render text normally if NOT a confirmation message (confirmation has its own styled box) */}
-                        {msg.ui_type !== 'confirmation' && (
-                          <div style={{ wordBreak: 'break-word' }}>
-                            {msg.sender === 'user' ? msg.text : renderFormattedLines(msg.text)}
-                          </div>
-                        )}
-                        
-                        {msg.ui_type === 'doctor_selection' && msg.options.length > 0 && (
-                          <div className="selection-options" style={{ marginTop: '12px' }}>
-                            {msg.options.map((opt, idx) => (
-                              <button
-                                key={opt.value || idx}
-                                className="selection-button"
-                                onClick={() => handleOptionClick(opt.value)}
-                                disabled={loading}
-                              >
-                                👨‍⚕️ {opt.label || opt.value || 'Doctor Option'}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                        
-                        {msg.ui_type === 'date_selection' && msg.options.length > 0 && (
-                          <div className="selection-options" style={{ marginTop: '12px' }}>
-                            {msg.options.map((opt, idx) => (
-                              <button
-                                key={opt.value || idx}
-                                className="selection-button"
-                                onClick={() => handleOptionClick(opt.value)}
-                                disabled={loading}
-                              >
-                                📅 {opt.label || opt.value || 'Date Option'}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                        
-                        {msg.ui_type === 'time_selection' && msg.options.length > 0 && (
-                          <div className="selection-options" style={{ marginTop: '12px' }}>
-                            {msg.options.map((opt, idx) => (
-                              <button
-                                key={opt.value || idx}
-                                className="selection-button"
-                                onClick={() => handleOptionClick(opt.value)}
-                                disabled={loading}
-                              >
-                                🕐 {opt.label || opt.value || 'Time Option'}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                        
-                        {msg.ui_type === 'confirmation' && msg.options.length > 0 && (
-                          <>
-                            <div className="confirmation-box" style={{ backgroundColor: msg.sender === 'user' ? 'rgba(255,255,255,0.15)' : '#f8f9fa', borderColor: msg.sender === 'user' ? 'rgba(255,255,255,0.3)' : 'var(--primary-color)', color: msg.sender === 'user' ? '#ffffff' : '#333333' }}>
-                              {renderFormattedLines(msg.text)}
+                  </style>
+                  <div className="chat-history" style={{ flex: 1, overflowY: 'auto', padding: '16px', backgroundColor: '#f5f5f5' }}>
+                    {messages.map((msg, idx) => (
+                      <div key={msg.id} style={{ display: 'flex', marginBottom: '12px', justifyContent: msg.sender === 'user' ? 'flex-end' : 'flex-start', alignItems: 'flex-end', gap: '8px' }}>
+                        {msg.sender === 'bot' && <div style={{ background: 'white', padding: '6px', borderRadius: '50%', color: 'var(--primary-color)', flexShrink: 0 }}><FaRobot size={14} /></div>}
+
+                        <div style={{
+                          maxWidth: '70%',
+                          backgroundColor: msg.sender === 'user' ? 'var(--primary-color)' : '#ffffff',
+                          color: msg.sender === 'user' ? '#ffffff' : '#333333',
+                          padding: '10px 14px',
+                          borderRadius: msg.sender === 'user' ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
+                          wordBreak: 'break-word',
+                          whiteSpace: 'pre-wrap',
+                          boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                        }}>
+                          {/* Only render text normally if NOT a confirmation message (confirmation has its own styled box) */}
+                          {msg.ui_type !== 'confirmation' && (
+                            <div style={{ wordBreak: 'break-word' }}>
+                              {msg.sender === 'user' ? msg.text : renderFormattedLines(msg.text)}
                             </div>
-                            <div className="confirmation-options" style={{ marginTop: '12px' }}>
+                          )}
+
+                          {msg.ui_type === 'doctor_selection' && msg.options.length > 0 && (
+                            <div className="selection-options" style={{ marginTop: '12px' }}>
                               {msg.options.map((opt, idx) => (
                                 <button
                                   key={opt.value || idx}
-                                  className={`btn-confirm ${opt.value === 'yes' ? 'btn-confirm-yes' : 'btn-confirm-no'}`}
+                                  className="selection-button"
                                   onClick={() => handleOptionClick(opt.value)}
                                   disabled={loading}
                                 >
-                                  {opt.label || (opt.value === 'yes' ? 'Confirm' : 'Cancel')}
+                                  👨‍⚕️ {opt.label || opt.value || 'Doctor Option'}
                                 </button>
                               ))}
                             </div>
-                          </>
-                        )}
+                          )}
+
+                          {msg.ui_type === 'date_selection' && msg.options.length > 0 && (
+                            <div className="selection-options" style={{ marginTop: '12px' }}>
+                              {msg.options.map((opt, idx) => (
+                                <button
+                                  key={opt.value || idx}
+                                  className="selection-button"
+                                  onClick={() => handleOptionClick(opt.value)}
+                                  disabled={loading}
+                                >
+                                  📅 {opt.label || opt.value || 'Date Option'}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+
+                          {msg.ui_type === 'time_selection' && msg.options.length > 0 && (
+                            <div className="selection-options" style={{ marginTop: '12px' }}>
+                              {msg.options.map((opt, idx) => (
+                                <button
+                                  key={opt.value || idx}
+                                  className="selection-button"
+                                  onClick={() => handleOptionClick(opt.value)}
+                                  disabled={loading}
+                                >
+                                  🕐 {opt.label || opt.value || 'Time Option'}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+
+                          {msg.ui_type === 'confirmation' && msg.options.length > 0 && (
+                            <>
+                              <div className="confirmation-box" style={{ backgroundColor: msg.sender === 'user' ? 'rgba(255,255,255,0.15)' : '#f8f9fa', borderColor: msg.sender === 'user' ? 'rgba(255,255,255,0.3)' : 'var(--primary-color)', color: msg.sender === 'user' ? '#ffffff' : '#333333' }}>
+                                {renderFormattedLines(msg.text)}
+                              </div>
+                              <div className="confirmation-options" style={{ marginTop: '12px' }}>
+                                {msg.options.map((opt, idx) => (
+                                  <button
+                                    key={opt.value || idx}
+                                    className={`btn-confirm ${opt.value === 'yes' ? 'btn-confirm-yes' : 'btn-confirm-no'}`}
+                                    onClick={() => handleOptionClick(opt.value)}
+                                    disabled={loading}
+                                  >
+                                    {opt.label || (opt.value === 'yes' ? 'Confirm' : 'Cancel')}
+                                  </button>
+                                ))}
+                              </div>
+                            </>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                  {loading ? (
-                    <div style={{ display: 'flex', marginBottom: '12px', justifyContent: 'flex-start', alignItems: 'flex-end', gap: '8px' }}>
-                      <div style={{ background: 'white', padding: '6px', borderRadius: '50%', color: 'var(--primary-color)', flexShrink: 0 }}><FaRobot size={14} /></div>
-                      <div style={{ 
-                        backgroundColor: '#ffffff',
-                        color: '#333333',
-                        padding: '10px 14px',
-                        borderRadius: '18px 18px 18px 4px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 6,
-                        boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
-                      }}>
-                        <TypingDots />
+                    ))}
+                    {loading ? (
+                      <div style={{ display: 'flex', marginBottom: '12px', justifyContent: 'flex-start', alignItems: 'flex-end', gap: '8px' }}>
+                        <div style={{ background: 'white', padding: '6px', borderRadius: '50%', color: 'var(--primary-color)', flexShrink: 0 }}><FaRobot size={14} /></div>
+                        <div style={{
+                          backgroundColor: '#ffffff',
+                          color: '#333333',
+                          padding: '10px 14px',
+                          borderRadius: '18px 18px 18px 4px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                        }}>
+                          <TypingDots />
+                        </div>
                       </div>
+                    ) : null}
+                    <div ref={chatEndRef} />
+                  </div>
+                  {showInput && (
+                    <form className="chat-input-area" onSubmit={handleSend} style={{ padding: '16px', borderTop: '1px solid #eee' }}>
+                      <input
+                        type="text"
+                        className="form-control"
+                        placeholder="Talk to your health assistant..."
+                        value={input}
+                        onChange={(e) => setInput(e.target.value)}
+                        style={{ flex: 1 }}
+                      />
+                      <button type="submit" className="btn btn-primary" disabled={!input.trim() || loading}>
+                        <FaPaperPlane /> Send
+                      </button>
+                    </form>
+                  )}
+                  {error ? (
+                    <div className="text-muted" style={{ color: 'crimson', marginTop: '8px', padding: '0 16px 16px' }}>
+                      {error}
                     </div>
                   ) : null}
-                  <div ref={chatEndRef} />
                 </div>
-                {showInput && (
-                  <form className="chat-input-area" onSubmit={handleSend} style={{ padding: '16px', borderTop: '1px solid #eee' }}>
-                    <input
-                      type="text"
-                      className="form-control"
-                      placeholder="Talk to your health assistant..."
-                      value={input}
-                      onChange={(e) => setInput(e.target.value)}
-                      style={{ flex: 1 }}
-                    />
-                    <button type="submit" className="btn btn-primary" disabled={!input.trim() || loading}>
-                      <FaPaperPlane /> Send
-                    </button>
-                  </form>
-                )}
-                {error ? (
-                  <div className="text-muted" style={{ color: 'crimson', marginTop: '8px', padding: '0 16px 16px' }}>
-                    {error}
-                  </div>
-                ) : null}
-              </div>
-            </Card>
-          </main>
+              </Card>
+            </main>
+          </div>
         </div>
-      </div>
       )}
 
       {/* Appointment Modal */}
-      <AppointmentModal 
-        isOpen={showAppointmentModal} 
+      <AppointmentModal
+        isOpen={showAppointmentModal}
         appointmentData={appointmentDetails}
         onClose={() => setShowAppointmentModal(false)}
       />

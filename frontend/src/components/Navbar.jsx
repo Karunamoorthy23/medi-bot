@@ -1,9 +1,54 @@
 import { Link, useLocation } from 'react-router-dom';
 import { FaUserCircle, FaSignOutAlt, FaBell } from 'react-icons/fa';
+import { useEffect, useState } from 'react';
+import { apiGet, apiPost } from '../api/client';
 
 function Navbar() {
   const location = useLocation();
   const isDoctor = location.pathname.startsWith('/doctor-');
+  const [userName, setUserName] = useState('');
+
+  useEffect(() => {
+    let mounted = true;
+
+    // First try local storage for immediate display
+    if (isDoctor) {
+      const storedDoctor = localStorage.getItem('doctorName');
+      if (storedDoctor) setUserName(`Dr. ${storedDoctor}`);
+    } else {
+      const storedUser = localStorage.getItem('userName');
+      if (storedUser) setUserName(storedUser);
+    }
+
+    // Then try API sync
+    apiGet('/api/session')
+      .then(data => {
+        if (!mounted) return;
+        if (isDoctor && data?.doctor) {
+          setUserName(`Dr. ${data.doctor.name}`);
+          localStorage.setItem('doctorName', data.doctor.name);
+        } else if (!isDoctor && data?.user) {
+          setUserName(data.user.username);
+          localStorage.setItem('userName', data.user.username);
+        }
+      })
+      .catch(err => console.error('Failed to fetch session', err));
+
+    return () => { mounted = false; };
+  }, [isDoctor]);
+
+  const handleLogout = () => {
+    if (isDoctor) {
+      localStorage.removeItem('doctorName');
+      apiPost('/api/doctor/logout').catch(console.error);
+    } else {
+      localStorage.removeItem('userName');
+      apiPost('/api/logout').catch(console.error);
+    }
+  };
+
+  const defaultName = isDoctor ? 'Doctor' : 'User';
+  const displayName = userName || defaultName;
 
   return (
     <header style={{
@@ -65,9 +110,11 @@ function Navbar() {
           fontSize: '0.85rem', fontWeight: 500
         }}>
           <FaUserCircle size={16} color="var(--text-secondary)" />
-          {isDoctor ? 'Dr. Sarah' : 'Alex Johnson'}
+          {displayName}
         </div>
-        <Link to={isDoctor ? "/doctor-login" : "/login"} className="btn btn-outline text-danger" style={{ padding: '8px', border: 'none', borderRadius: '50%' }} title="Logout">
+        <Link to={isDoctor ? "/doctor-login" : "/login"}
+          onClick={handleLogout}
+          className="btn btn-outline text-danger" style={{ padding: '8px', border: 'none', borderRadius: '50%' }} title="Logout">
           <FaSignOutAlt size={18} />
         </Link>
       </div>

@@ -449,11 +449,12 @@ def send_message():
     chat_id = data.get('chat_id')
     user_id = session.get('user_id')
     
-    # Create a new chat if chat_id not provided
+    # Create a new chat if chat_id not provided or doesn't exist
     if not chat_id:
-        # Generate chat_id from timestamp
         chat_id = str(int(time.time() * 1000))
         
+    chat_record = Chat.query.get(chat_id)
+    if not chat_record:
         # Create Chat record with title from first message
         # Always use the message content as title (up to 50 chars)
         chat_title = user_message.strip()[:50] if user_message.strip() else 'New Conversation'
@@ -648,6 +649,16 @@ def book_appointment():
     emergency_level = data.get('emergency_level', 'normal')
     severity = data.get('severity', 5)
     
+    appointment_date_str = data.get('appointment_date')
+    start_time = data.get('start_time')
+    
+    appointment_date = None
+    if appointment_date_str:
+        try:
+            appointment_date = datetime.strptime(appointment_date_str, '%Y-%m-%d').date()
+        except ValueError:
+            pass
+
     # Create appointment
     appointment = Appointment(
         user_id=user_id,
@@ -658,6 +669,8 @@ def book_appointment():
         problem=problem,
         symptoms_analysis=symptoms_analysis,
         doctor_id=doctor_id,
+        appointment_date=appointment_date,
+        start_time=start_time,
         status='pending',
         emergency_level=emergency_level,
         severity_score=severity

@@ -2,6 +2,10 @@ import { useMemo, useState, useEffect } from 'react';
 import Navbar from '../components/Layout/Navbar';
 import Card from '../components/Widget/Card';
 import { apiGet, apiPost } from '../api/client';
+import {
+  FaClipboardList, FaHourglassHalf, FaCheckCircle, FaCheckDouble,
+  FaExclamationCircle, FaCalendarDay, FaClock, FaPhoneAlt, FaTimesCircle, FaCog
+} from 'react-icons/fa';
 
 const statusOptions = ['all', 'pending', 'approved', 'completed', 'emergency', 'today'];
 
@@ -15,7 +19,7 @@ function DoctorDashboardPage() {
   const [durationSaving, setDurationSaving] = useState(false);
   const [durationError, setDurationError] = useState('');
 
-  const [slotModal, setSlotModal] = useState(null); // { appointmentId, date, start_time, duration }
+  const [slotModal, setSlotModal] = useState(null);
   const [slotSaving, setSlotSaving] = useState(false);
   const [slotError, setSlotError] = useState('');
 
@@ -109,251 +113,239 @@ function DoctorDashboardPage() {
     }
   };
 
+  const getStatusBadge = (status) => {
+    const styles = {
+      pending: { bg: '#fff7ed', color: '#ea580c', border: '#ffedd5' },
+      approved: { bg: '#f0fdf4', color: '#16a34a', border: '#dcfce7' },
+      completed: { bg: '#eff6ff', color: '#2563eb', border: '#dbeafe' },
+      rejected: { bg: '#fdf2f8', color: '#db2777', border: '#fce7f3' }
+    };
+    const s = styles[status] || { bg: '#f1f5f9', color: '#475569', border: '#e2e8f0' };
+    return (
+      <span style={{
+        background: s.bg, color: s.color, border: `1px solid ${s.border}`,
+        padding: '4px 10px', borderRadius: '12px', fontSize: '12px', fontWeight: 600, textTransform: 'capitalize', display: 'inline-block'
+      }}>
+        {status}
+      </span>
+    );
+  };
+
   return (
-    <div className="app-shell" style={{ background: '#f5f5f5', minHeight: '100vh' }}>
+    <div className="app-shell" style={{ background: '#f8fafc', minHeight: '100vh' }}>
       <Navbar />
-      <main className="page-wrapper" style={{ maxWidth: '1400px', margin: '30px auto', padding: '0 20px' }}>
+      <main className="page-wrapper" style={{ padding: '24px' }}>
 
-        <div style={{ background: '#43cea2', color: 'white', padding: '10px 20px', borderRadius: '30px', display: 'inline-flex', alignItems: 'center', marginBottom: '20px', fontSize: '16px', fontWeight: 600, boxShadow: '0 2px 10px rgba(67, 206, 162, 0.3)' }}>
-          <span style={{ display: 'inline-block', width: '10px', height: '10px', background: 'white', borderRadius: '50%', marginRight: '10px', animation: 'pulse 1.5s infinite' }}></span>
-          {currentTime.toLocaleString()}
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '30px' }}>
-          <Card style={{ textAlign: 'center', padding: '20px' }}>
-            <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#43cea2' }}>{stats.pending}</div>
-            <div style={{ color: '#666', marginTop: '5px' }}>Pending Requests</div>
-          </Card>
-          <Card style={{ textAlign: 'center', padding: '20px' }}>
-            <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#43cea2' }}>{stats.approved}</div>
-            <div style={{ color: '#666', marginTop: '5px' }}>Approved</div>
-          </Card>
-          <Card style={{ textAlign: 'center', padding: '20px' }}>
-            <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#43cea2' }}>{stats.completed}</div>
-            <div style={{ color: '#666', marginTop: '5px' }}>Completed</div>
-          </Card>
-          <Card style={{ textAlign: 'center', padding: '20px' }}>
-            <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#43cea2' }}>{stats.total}</div>
-            <div style={{ color: '#666', marginTop: '5px' }}>Total</div>
-          </Card>
-        </div>
-
-        <Card style={{ padding: '20px', marginBottom: '30px' }}>
-          <h3 style={{ marginBottom: '15px', color: '#333' }}>⏱️ Consultation Duration Settings</h3>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
-            <label style={{ fontWeight: 600, color: '#333' }}>Default consultation duration:</label>
-            <select
-              style={{ padding: '10px', border: '2px solid #43cea2', borderRadius: '5px', fontSize: '14px', minWidth: '150px' }}
-              value={duration}
-              onChange={(e) => setDuration(e.target.value)}
-            >
-              <option value="15">15 minutes</option>
-              <option value="20">20 minutes</option>
-              <option value="25">25 minutes</option>
-              <option value="30">30 minutes</option>
-              <option value="45">45 minutes</option>
-              <option value="60">60 minutes</option>
-            </select>
-            <button
-              className="btn"
-              style={{ background: '#43cea2', color: 'white', border: 'none', padding: '10px 14px' }}
-              type="button"
-              onClick={saveDuration}
-              disabled={durationSaving}
-            >
-              Save
-            </button>
+        {/* Header Section */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
+          <div>
+            <h1 style={{ color: '#0f172a', margin: '0 0 4px 0', fontSize: '24px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <FaClipboardList color="#43cea2" /> Dashboard
+            </h1>
+            <p style={{ color: '#64748b', margin: 0, fontSize: '14px' }}>Manage patient appointments and schedules</p>
           </div>
-          {durationError ? (
-            <div className="text-muted" style={{ color: 'crimson', marginTop: '8px' }}>
-              {durationError}
+
+          <div style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <div style={{ background: 'white', border: '1px solid #e2e8f0', padding: '8px 16px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 600, color: '#334155', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
+              <span style={{ width: '8px', height: '8px', background: '#43cea2', borderRadius: '50%', animation: 'pulse 1.5s infinite' }}></span>
+              {currentTime.toLocaleString()}
             </div>
-          ) : null}
-          <p style={{ color: '#666', fontSize: '12px', marginTop: '5px' }}>⚠️ This duration will be used as default when assigning time slots</p>
-        </Card>
 
-        <Card style={{ padding: '20px', marginBottom: '30px' }}>
-          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-            {statusOptions.map((status) => (
-              <button
-                key={status}
-                style={{
-                  padding: '10px 20px',
-                  borderRadius: '25px',
-                  border: `1px solid ${selectedStatus === status ? '#43cea2' : '#ddd'}`,
-                  background: selectedStatus === status ? '#43cea2' : 'white',
-                  color: selectedStatus === status ? 'white' : '#333',
-                  cursor: 'pointer',
-                  fontWeight: 500,
-                  fontSize: '14px',
-                  transition: 'all 0.3s'
-                }}
-                onClick={() => setSelectedStatus(status)}
+            <div style={{ background: 'white', border: '1px solid #e2e8f0', padding: '6px 12px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
+              <FaCog color="#94a3b8" />
+              <select
+                style={{ border: 'none', fontSize: '13px', fontWeight: 500, color: '#334155', outline: 'none', background: 'transparent' }}
+                value={duration}
+                onChange={(e) => { setDuration(e.target.value); saveDuration(); }}
               >
-                {status === 'all' ? '📋 All' :
-                  status === 'pending' ? '⏳ Pending' :
-                    status === 'approved' ? '✅ Approved' :
-                      status === 'completed' ? '✔️ Completed' :
-                        status === 'emergency' ? '🚨 Emergency' : '📅 Today'}
-              </button>
-            ))}
+                <option value="15">15 min duration</option>
+                <option value="20">20 min duration</option>
+                <option value="30">30 min duration</option>
+                <option value="60">60 min duration</option>
+              </select>
+            </div>
           </div>
-        </Card>
+        </div>
 
-        <h1 style={{ color: '#333', marginBottom: '30px' }}>📋 Appointment Management</h1>
+        {/* Stats Grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+          <Card style={{ padding: '16px', display: 'flex', alignItems: 'center', gap: '16px', border: '1px solid #f1f5f9', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+            <div style={{ padding: '12px', background: '#fff7ed', borderRadius: '10px', color: '#ea580c' }}><FaHourglassHalf size={20} /></div>
+            <div><div style={{ color: '#64748b', fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Pending</div><div style={{ fontSize: '20px', fontWeight: 700, color: '#0f172a' }}>{stats.pending}</div></div>
+          </Card>
+          <Card style={{ padding: '16px', display: 'flex', alignItems: 'center', gap: '16px', border: '1px solid #f1f5f9', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+            <div style={{ padding: '12px', background: '#f0fdf4', borderRadius: '10px', color: '#16a34a' }}><FaCheckCircle size={20} /></div>
+            <div><div style={{ color: '#64748b', fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Approved</div><div style={{ fontSize: '20px', fontWeight: 700, color: '#0f172a' }}>{stats.approved}</div></div>
+          </Card>
+          <Card style={{ padding: '16px', display: 'flex', alignItems: 'center', gap: '16px', border: '1px solid #f1f5f9', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+            <div style={{ padding: '12px', background: '#eff6ff', borderRadius: '10px', color: '#2563eb' }}><FaCheckDouble size={20} /></div>
+            <div><div style={{ color: '#64748b', fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Completed</div><div style={{ fontSize: '20px', fontWeight: 700, color: '#0f172a' }}>{stats.completed}</div></div>
+          </Card>
+          <Card style={{ padding: '16px', display: 'flex', alignItems: 'center', gap: '16px', border: '1px solid #f1f5f9', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+            <div style={{ padding: '12px', background: '#f1f5f9', borderRadius: '10px', color: '#475569' }}><FaClipboardList size={20} /></div>
+            <div><div style={{ color: '#64748b', fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Total</div><div style={{ fontSize: '20px', fontWeight: 700, color: '#0f172a' }}>{stats.total}</div></div>
+          </Card>
+        </div>
+
+        {/* Filters */}
+        <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '8px' }}>
+          {statusOptions.map((status) => (
+            <button
+              key={status}
+              onClick={() => setSelectedStatus(status)}
+              style={{
+                padding: '8px 16px', borderRadius: '20px', border: '1px solid',
+                borderColor: selectedStatus === status ? '#43cea2' : '#e2e8f0',
+                background: selectedStatus === status ? '#e6f9f0' : 'white',
+                color: selectedStatus === status ? '#116d4e' : '#64748b',
+                fontSize: '13px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.2s'
+              }}
+            >
+              {status === 'all' && <FaClipboardList />}
+              {status === 'pending' && <FaHourglassHalf />}
+              {status === 'approved' && <FaCheckCircle />}
+              {status === 'completed' && <FaCheckDouble />}
+              {status === 'emergency' && <FaExclamationCircle />}
+              {status === 'today' && <FaCalendarDay />}
+              <span style={{ textTransform: 'capitalize' }}>{status}</span>
+            </button>
+          ))}
+        </div>
 
         {error ? (
-          <div className="text-muted" style={{ color: 'crimson', marginBottom: '12px' }}>
+          <div style={{ padding: '12px', background: '#fef2f2', color: '#b91c1c', borderRadius: '8px', border: '1px solid #fecaca', marginBottom: '16px', fontSize: '14px' }}>
             {error}
           </div>
         ) : null}
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: '20px' }}>
-          {filteredAppointments.map(appointment => (
-            <div key={appointment.id} style={{
-              background: appointment.emergency_level === 'emergency' ? '#fff5f5' : 'white',
-              borderRadius: '10px',
-              padding: '20px',
-              boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-              borderLeft: `4px solid ${appointment.emergency_level === 'emergency' ? '#f44336' : (appointment.status === 'approved' ? '#2196f3' : 'transparent')}`
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', paddingBottom: '10px', borderBottom: '1px solid #eee' }}>
-                <div>
-                  <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#333' }}>{appointment.patient_name}</span>
-                  <div style={{ fontSize: '13px', color: '#666' }}>📞 {appointment.contact_number || 'N/A'}</div>
-                  {appointment.emergency_level === 'emergency' && <span style={{ background: '#f44336', color: 'white', padding: '3px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 600, marginLeft: '10px', display: 'inline-block', marginTop: '4px' }}>🚨 EMERGENCY</span>}
-                </div>
-                <span style={{ padding: '5px 10px', borderRadius: '15px', fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', background: appointment.status === 'pending' ? '#fff3cd' : (appointment.status === 'approved' ? '#d4edda' : '#cce5ff'), color: appointment.status === 'pending' ? '#856404' : (appointment.status === 'approved' ? '#155724' : '#004085') }}>{appointment.status}</span>
-              </div>
+        {/* Quick Data Table */}
+        <Card style={{ padding: 0, overflow: 'hidden', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', textAlign: 'left' }}>
+              <thead>
+                <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                  <th style={{ padding: '12px 16px', color: '#64748b', fontWeight: 600, width: '25%' }}>Patient info</th>
+                  <th style={{ padding: '12px 16px', color: '#64748b', fontWeight: 600, width: '20%' }}>Schedule</th>
+                  <th style={{ padding: '12px 16px', color: '#64748b', fontWeight: 600, width: '30%' }}>Problem</th>
+                  <th style={{ padding: '12px 16px', color: '#64748b', fontWeight: 600, width: '10%' }}>Status</th>
+                  <th style={{ padding: '12px 16px', color: '#64748b', fontWeight: 600, textAlign: 'right', width: '15%' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredAppointments.length === 0 ? (
+                  <tr>
+                    <td colSpan="5" style={{ padding: '32px', textAlign: 'center', color: '#94a3b8' }}>
+                      No appointments found for current filter.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredAppointments.map(app => (
+                    <tr key={app.id} style={{ borderBottom: '1px solid #e2e8f0', background: app.emergency_level === 'emergency' ? '#fef2f2' : 'white', transition: 'background 0.2s' }}>
+                      <td style={{ padding: '16px' }}>
+                        <div style={{ fontWeight: 600, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          {app.patient_name}
+                          {app.emergency_level === 'emergency' && <FaExclamationCircle color="#ef4444" size={14} title="Emergency" />}
+                        </div>
+                        <div style={{ color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
+                          <FaPhoneAlt size={10} /> {app.contact_number || 'N/A'}
+                        </div>
+                      </td>
+                      <td style={{ padding: '16px' }}>
+                        <div style={{ color: '#334155', fontWeight: 500 }}>{app.appointment_date || '—'}</div>
+                        <div style={{ color: '#64748b', marginTop: '2px' }}>
+                          {app.start_time ? `${app.start_time} - ${app.end_time}` : 'TBD'}
+                        </div>
+                      </td>
+                      <td style={{ padding: '16px' }}>
+                        <div style={{ color: '#334155', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }} title={app.problem}>
+                          {app.problem}
+                        </div>
+                      </td>
+                      <td style={{ padding: '16px', verticalAlign: 'middle' }}>
+                        {getStatusBadge(app.status)}
+                      </td>
+                      <td style={{ padding: '16px', textAlign: 'right', verticalAlign: 'middle' }}>
+                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                          {app.status === 'pending' && (
+                            <>
+                              <button
+                                onClick={() => openAssign(app.id)}
+                                style={{ padding: '6px 12px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}
+                              >
+                                <FaClock size={12} /> Assign
+                              </button>
+                              <button
+                                onClick={() => updateStatus(app.id, 'rejected')}
+                                style={{ padding: '6px 12px', background: '#ef4444', color: 'white', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}
+                              >
+                                <FaTimesCircle size={12} /> Reject
+                              </button>
+                            </>
+                          )}
+                          {app.status === 'approved' && (
+                            <button
+                              onClick={() => updateStatus(app.id, 'completed')}
+                              style={{ padding: '6px 12px', background: '#10b981', color: 'white', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}
+                            >
+                              <FaCheckCircle size={12} /> Complete
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </Card>
 
-              <div style={{ marginBottom: '15px' }}>
-                <div style={{ display: 'flex', marginBottom: '10px' }}>
-                  <span style={{ width: '100px', color: '#666', fontWeight: 500 }}>Date:</span>
-                  <span style={{ flex: 1, color: '#333' }}>{appointment.appointment_date || '—'}</span>
-                </div>
-                <div style={{ display: 'flex', marginBottom: '10px' }}>
-                  <span style={{ width: '100px', color: '#666', fontWeight: 500 }}>Time:</span>
-                  <span style={{ flex: 1, color: '#333' }}>
-                    {appointment.start_time ? (
-                      <span style={{ background: '#e3f2fd', padding: '5px 10px', borderRadius: '15px', display: 'inline-block', fontSize: '14px', color: '#1976d2' }}>
-                        {appointment.start_time} - {appointment.end_time}
-                      </span>
-                    ) : (
-                      <span className="text-muted">Pending</span>
-                    )}
-                  </span>
-                </div>
-                <div style={{ background: '#f9f9f9', padding: '10px', borderRadius: '5px', margin: '10px 0', color: '#666', fontStyle: 'italic' }}>
-                  <strong>Problem:</strong> "{appointment.problem}"
-                </div>
-              </div>
-
-              {appointment.status === 'pending' && (
-                <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
-                  <button
-                    type="button"
-                    onClick={() => openAssign(appointment.id)}
-                    style={{ flex: 1, padding: '10px', border: 'none', borderRadius: '5px', cursor: 'pointer', fontSize: '14px', fontWeight: 600, background: '#4caf50', color: 'white' }}
-                  >
-                    ⏰ Assign Slot
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => updateStatus(appointment.id, 'rejected')}
-                    style={{ flex: 1, padding: '10px', border: 'none', borderRadius: '5px', cursor: 'pointer', fontSize: '14px', fontWeight: 600, background: '#f44336', color: 'white' }}
-                  >
-                    ❌ Reject
-                  </button>
-                </div>
-              )}
-              {appointment.status === 'approved' && (
-                <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
-                  <button
-                    type="button"
-                    onClick={() => updateStatus(appointment.id, 'completed')}
-                    style={{ flex: 1, padding: '10px', border: 'none', borderRadius: '5px', cursor: 'pointer', fontSize: '14px', fontWeight: 600, background: '#ff9800', color: 'white' }}
-                  >
-                    ✅ Mark Completed
-                  </button>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-
-        {slotModal ? (
+        {/* Modal */}
+        {slotModal && (
           <div
             role="dialog"
             aria-modal="true"
-            style={{
-              position: 'fixed',
-              inset: 0,
-              background: 'rgba(0,0,0,0.35)',
-              display: 'grid',
-              placeItems: 'center',
-              padding: '20px',
-              zIndex: 50,
-            }}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(4px)', display: 'grid', placeItems: 'center', padding: '16px', zIndex: 100 }}
             onClick={() => setSlotModal(null)}
           >
-            <div
-              style={{ background: 'white', borderRadius: '12px', padding: '18px', width: '100%', maxWidth: '520px' }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <h3 style={{ marginTop: 0, marginBottom: '12px' }}>Assign time slot</h3>
+            <div style={{ background: 'white', borderRadius: '16px', padding: '24px', width: '100%', maxWidth: '400px', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }} onClick={(e) => e.stopPropagation()}>
+              <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', color: '#0f172a' }}>Schedule Appointment</h3>
               <form onSubmit={saveAssign}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                  <div className="form-group">
-                    <label>Date</label>
-                    <input
-                      required
-                      type="date"
-                      className="form-control"
-                      value={slotModal.date}
-                      onChange={(e) => setSlotModal((p) => ({ ...p, date: e.target.value }))}
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label>Start time</label>
-                    <input
-                      required
-                      type="time"
-                      className="form-control"
-                      value={slotModal.start_time}
-                      onChange={(e) => setSlotModal((p) => ({ ...p, start_time: e.target.value }))}
-                    />
-                  </div>
-                </div>
-                <div className="form-group">
-                  <label>Duration (minutes)</label>
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Date</label>
                   <input
-                    required
-                    type="number"
-                    min="5"
-                    className="form-control"
-                    value={slotModal.duration}
-                    onChange={(e) => setSlotModal((p) => ({ ...p, duration: e.target.value }))}
+                    required type="date"
+                    value={slotModal.date} onChange={(e) => setSlotModal(p => ({ ...p, date: e.target.value }))}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px', outline: 'none' }}
                   />
                 </div>
-
-                {slotError ? (
-                  <div className="text-muted" style={{ color: 'crimson', marginTop: '8px' }}>
-                    {slotError}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Start time</label>
+                    <input
+                      required type="time"
+                      value={slotModal.start_time} onChange={(e) => setSlotModal(p => ({ ...p, start_time: e.target.value }))}
+                      style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px', outline: 'none' }}
+                    />
                   </div>
-                ) : null}
-
-                <div style={{ display: 'flex', gap: '10px', marginTop: '14px' }}>
-                  <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={slotSaving}>
-                    Save slot
-                  </button>
-                  <button type="button" className="btn btn-outline" style={{ flex: 1 }} onClick={() => setSlotModal(null)}>
-                    Cancel
-                  </button>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Minutes</label>
+                    <input
+                      required type="number" min="5"
+                      value={slotModal.duration} onChange={(e) => setSlotModal(p => ({ ...p, duration: e.target.value }))}
+                      style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px', outline: 'none' }}
+                    />
+                  </div>
+                </div>
+                {slotError && <div style={{ color: '#dc2626', fontSize: '13px', marginBottom: '12px' }}>{slotError}</div>}
+                <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
+                  <button type="button" onClick={() => setSlotModal(null)} style={{ flex: 1, padding: '10px', background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
+                  <button type="submit" disabled={slotSaving} style={{ flex: 1, padding: '10px', background: '#43cea2', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: 'pointer' }}>Save slot</button>
                 </div>
               </form>
             </div>
           </div>
-        ) : null}
+        )}
       </main>
     </div>
   );

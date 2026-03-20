@@ -1,4 +1,5 @@
 import Card from './Widget/Card';
+import { FaCalendarAlt } from 'react-icons/fa';
 
 function DoctorCard({ doctor }) {
   return (
@@ -24,8 +25,8 @@ function DoctorCard({ doctor }) {
         State: {doctor.status}
       </div>
       <div className="doctor-footer">
-        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <span style={{ fontSize: '1.2rem', color: 'var(--text-muted)' }}>📅</span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <FaCalendarAlt style={{ fontSize: '1rem', color: 'var(--text-muted)' }} />
           {doctor.total_appointments} appointments today
         </span>
       </div>
