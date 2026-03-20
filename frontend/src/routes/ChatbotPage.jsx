@@ -809,6 +809,47 @@ function ChatbotPage() {
                             </div>
                           )}
 
+                          {msg.ui_type === 'gender_selection' && msg.options.length > 0 && (
+                            <div className="selection-options" style={{ marginTop: '12px' }}>
+                              {msg.options.map((opt, idx) => (
+                                <button
+                                  key={opt.value || idx}
+                                  className="selection-button"
+                                  onClick={() => handleOptionClick(opt.value)}
+                                  disabled={loading}
+                                >
+                                  {opt.label || opt.value || 'Option'}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+
+                          {msg.ui_type === 'emergency_selection' && msg.options.length > 0 && (
+                            <div className="selection-options" style={{ marginTop: '12px' }}>
+                              {msg.options.map((opt, idx) => (
+                                <button
+                                  key={opt.value || idx}
+                                  className="selection-button"
+                                  onClick={() => handleOptionClick(opt.value)}
+                                  disabled={loading}
+                                  style={{
+                                    background: opt.value === 'high' ? '#fee2e2' :
+                                      opt.value === 'medium' ? '#ffedd5' :
+                                        opt.value === 'low' ? '#fefce8' : '#f0fdf4',
+                                    color: opt.value === 'high' ? '#991b1b' :
+                                      opt.value === 'medium' ? '#9a3412' :
+                                        opt.value === 'low' ? '#854d0e' : '#166534',
+                                    border: `1px solid ${opt.value === 'high' ? '#fecaca' :
+                                      opt.value === 'medium' ? '#fed7aa' :
+                                        opt.value === 'low' ? '#fef08a' : '#bbf7d0'}`
+                                  }}
+                                >
+                                  {opt.label || opt.value}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+
                           {msg.ui_type === 'confirmation' && msg.options.length > 0 && (
                             <>
                               <div className="confirmation-box" style={{ backgroundColor: msg.sender === 'user' ? 'rgba(255,255,255,0.15)' : '#f8f9fa', borderColor: msg.sender === 'user' ? 'rgba(255,255,255,0.3)' : 'var(--primary-color)', color: msg.sender === 'user' ? '#ffffff' : '#333333' }}>

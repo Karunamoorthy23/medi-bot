@@ -224,9 +224,10 @@ function DoctorDashboardPage() {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', textAlign: 'left' }}>
               <thead>
                 <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                  <th style={{ padding: '12px 16px', color: '#64748b', fontWeight: 600, width: '25%' }}>Patient info</th>
-                  <th style={{ padding: '12px 16px', color: '#64748b', fontWeight: 600, width: '20%' }}>Schedule</th>
-                  <th style={{ padding: '12px 16px', color: '#64748b', fontWeight: 600, width: '30%' }}>Problem</th>
+                  <th style={{ padding: '12px 16px', color: '#64748b', fontWeight: 600, width: '20%' }}>Patient info</th>
+                  <th style={{ padding: '12px 16px', color: '#64748b', fontWeight: 600, width: '15%' }}>Schedule</th>
+                  <th style={{ padding: '12px 16px', color: '#64748b', fontWeight: 600, width: '25%' }}>Problem</th>
+                  <th style={{ padding: '12px 16px', color: '#64748b', fontWeight: 600, width: '15%' }}>Priority</th>
                   <th style={{ padding: '12px 16px', color: '#64748b', fontWeight: 600, width: '10%' }}>Status</th>
                   <th style={{ padding: '12px 16px', color: '#64748b', fontWeight: 600, textAlign: 'right', width: '15%' }}>Actions</th>
                 </tr>
@@ -234,20 +235,22 @@ function DoctorDashboardPage() {
               <tbody>
                 {filteredAppointments.length === 0 ? (
                   <tr>
-                    <td colSpan="5" style={{ padding: '32px', textAlign: 'center', color: '#94a3b8' }}>
+                    <td colSpan="6" style={{ padding: '32px', textAlign: 'center', color: '#94a3b8' }}>
                       No appointments found for current filter.
                     </td>
                   </tr>
                 ) : (
                   filteredAppointments.map(app => (
-                    <tr key={app.id} style={{ borderBottom: '1px solid #e2e8f0', background: app.emergency_level === 'emergency' ? '#fef2f2' : 'white', transition: 'background 0.2s' }}>
+                    <tr key={app.id} style={{ borderBottom: '1px solid #e2e8f0', background: app.emergency_level === 'high' ? '#fef2f2' : 'white', transition: 'background 0.2s' }}>
                       <td style={{ padding: '16px' }}>
                         <div style={{ fontWeight: 600, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
                           {app.patient_name}
-                          {app.emergency_level === 'emergency' && <FaExclamationCircle color="#ef4444" size={14} title="Emergency" />}
                         </div>
                         <div style={{ color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
                           <FaPhoneAlt size={10} /> {app.contact_number || 'N/A'}
+                        </div>
+                        <div style={{ color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px', fontSize: '12px' }}>
+                          📍 {app.location || 'Not Specified'}
                         </div>
                       </td>
                       <td style={{ padding: '16px' }}>
@@ -260,6 +263,11 @@ function DoctorDashboardPage() {
                         <div style={{ color: '#334155', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }} title={app.problem}>
                           {app.problem}
                         </div>
+                      </td>
+                      <td style={{ padding: '16px', verticalAlign: 'middle' }}>
+                        <span style={{ fontSize: '12px', fontWeight: 600, textTransform: 'capitalize', padding: '4px 8px', borderRadius: '12px', background: app.emergency_level === 'high' ? '#fef2f2' : (app.emergency_level === 'medium' ? '#fff7ed' : '#f0fdf4'), color: app.emergency_level === 'high' ? '#ef4444' : (app.emergency_level === 'medium' ? '#ea580c' : '#16a34a'), border: '1px solid #e2e8f0' }}>
+                          {app.emergency_level || 'normal checkup'}
+                        </span>
                       </td>
                       <td style={{ padding: '16px', verticalAlign: 'middle' }}>
                         {getStatusBadge(app.status)}
@@ -347,7 +355,7 @@ function DoctorDashboardPage() {
           </div>
         )}
       </main>
-    </div>
+    </div >
   );
 }
 

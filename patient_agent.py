@@ -24,6 +24,8 @@ class PatientAgent:
             'COLLECT_AGE': 'COLLECT_AGE',
             'COLLECT_GENDER': 'COLLECT_GENDER',
             'COLLECT_CONTACT': 'COLLECT_CONTACT',
+            'COLLECT_LOCATION': 'COLLECT_LOCATION',
+            'COLLECT_EMERGENCY': 'COLLECT_EMERGENCY',
             'COLLECT_SYMPTOMS': 'COLLECT_SYMPTOMS',
             'COLLECT_DOCTOR': 'COLLECT_DOCTOR',
             'COLLECT_DATE': 'COLLECT_DATE',
@@ -176,7 +178,17 @@ Provide your response in JSON format with these fields:
                 if age < 0 or age > 150: raise ValueError()
                 session_context['age'] = age
                 session_context['state'] = 'COLLECT_GENDER'
-                return {'response': "Thank you. What is the patient's gender? (Male/Female/Other)", 'session_context': session_context}
+                
+                return {
+                    'response': "Thank you. What is the patient's gender?",
+                    'session_context': session_context,
+                    'ui_type': 'gender_selection',
+                    'options': [
+                        {'label': '👨 Male', 'value': 'Male'},
+                        {'label': '👩 Female', 'value': 'Female'},
+                        {'label': '⚧️ Other', 'value': 'Other'}
+                    ]
+                }
             except:
                 return {'response': "Please provide a valid age (number between 0-150).", 'session_context': session_context}
 
@@ -199,6 +211,38 @@ Provide your response in JSON format with these fields:
             if len(clean_phone) < 10:
                 return {'response': "Please enter a valid contact number (at least 10 digits).", 'session_context': session_context}
             session_context['contact_number'] = msg
+            session_context['state'] = 'COLLECT_LOCATION'
+            return {'response': "Thank you. Where are you located? (e.g., Chennai, Madurai, etc.)", 'session_context': session_context}
+
+        elif state == 'COLLECT_LOCATION':
+            if len(msg) < 2:
+                return {'response': "Please provide a valid location.", 'session_context': session_context}
+            session_context['location'] = msg
+            session_context['state'] = 'COLLECT_EMERGENCY'
+            
+            return {
+                'response': "Got it. How would you rate the emergency level of your visit?",
+                'session_context': session_context,
+                'ui_type': 'emergency_selection',
+                'options': [
+                    {'label': '🔴 High', 'value': 'high'},
+                    {'label': '🟠 Medium', 'value': 'medium'},
+                    {'label': '🟡 Low', 'value': 'low'},
+                    {'label': '🟢 Normal Checkup', 'value': 'normal checkup'}
+                ]
+            }
+
+        elif state == 'COLLECT_EMERGENCY':
+            clean_msg = msg_lower.replace('🔴', '').replace('🟠', '').replace('🟡', '').replace('🟢', '').strip()
+            
+            valid_levels = ['high', 'medium', 'low', 'normal checkup']
+            level = 'normal checkup'
+            for v in valid_levels:
+                if v in clean_msg:
+                    level = v
+                    break
+                    
+            session_context['emergency_level'] = level
             session_context['state'] = 'COLLECT_SYMPTOMS'
             return {'response': "Thank you. Can you briefly describe the **Symptoms or Health Concern** for this appointment?", 'session_context': session_context}
 
@@ -333,10 +377,12 @@ Provide your response in JSON format with these fields:
             formatted_date = appt_date.strftime('%A, %B %d, %Y')
             
             summary = f"""### 🏥 Appointment Confirmation
-**Patient:** {session_context['patient_name']} ({session_context['age']}y, {session_context['gender']})
-**Contact:** {session_context['contact_number']}
-**Symptoms:** {session_context['symptoms']}
-**Doctor:** {session_context['doctor_name']}
+**Patient:** {session_context.get('patient_name', '')} ({session_context.get('age', '')}y, {session_context.get('gender', '')})
+**Contact:** {session_context.get('contact_number', '')}
+**Location:** {session_context.get('location', '')}
+**Emergency Level:** {str(session_context.get('emergency_level', '')).capitalize()}
+**Symptoms:** {session_context.get('symptoms', '')}
+**Doctor:** {session_context.get('doctor_name', '')}
 **Date:** {formatted_date}
 **Time:** {msg}
 

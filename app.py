@@ -65,6 +65,7 @@ class Appointment(db.Model):
     age = db.Column(db.Integer, nullable=False)
     gender = db.Column(db.String(10), nullable=False)
     contact_number = db.Column(db.String(20), nullable=False)
+    location = db.Column(db.String(100), nullable=True)
     problem = db.Column(db.Text, nullable=False)
     symptoms_analysis = db.Column(db.Text, nullable=True)
     doctor_id = db.Column(db.Integer, db.ForeignKey('doctors.id'), nullable=False)
@@ -273,6 +274,7 @@ def serialize_appointment(a):
         'age': a.age,
         'gender': a.gender,
         'contact_number': a.contact_number,
+        'location': a.location,
         'problem': a.problem,
         'symptoms_analysis': a.symptoms_analysis,
         'doctor_id': a.doctor_id,
@@ -520,6 +522,7 @@ def send_message():
             age=ctx.get('age', 0),
             gender=ctx.get('gender', 'Other'),
             contact_number=ctx.get('contact_number', ''),
+            location=ctx.get('location', ''),
             problem=ctx.get('symptoms', ''),
             doctor_id=ctx.get('doctor_id', 1),
             appointment_date=datetime.strptime(ctx.get('appointment_date', ''), '%Y-%m-%d').date(),
@@ -643,10 +646,11 @@ def book_appointment():
     age = data.get('age')
     gender = data.get('gender')
     contact_number = data.get('contact_number')
+    location = data.get('location', '')
     problem = data.get('problem')
     doctor_id = data.get('doctor_id')
     symptoms_analysis = data.get('symptoms_analysis', '')
-    emergency_level = data.get('emergency_level', 'normal')
+    emergency_level = data.get('emergency_level', 'normal checkup')
     severity = data.get('severity', 5)
     
     appointment_date_str = data.get('appointment_date')
@@ -666,6 +670,7 @@ def book_appointment():
         age=age,
         gender=gender,
         contact_number=contact_number,
+        location=location,
         problem=problem,
         symptoms_analysis=symptoms_analysis,
         doctor_id=doctor_id,

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FaUserPlus, FaPhone, FaCalendarAlt, FaStethoscope, FaArrowRight, FaTimes, FaRegCalendarAlt, FaRegClock, FaCommentMedical } from 'react-icons/fa';
+import { FaUserPlus, FaPhone, FaCalendarAlt, FaStethoscope, FaArrowRight, FaTimes, FaRegCalendarAlt, FaRegClock, FaCommentMedical, FaMapMarkerAlt, FaExclamationCircle } from 'react-icons/fa';
 import Navbar from '../components/Layout/Navbar';
 import { apiGet, apiPost } from '../api/client';
 
@@ -12,6 +12,8 @@ function AppointmentFormPage() {
   const [age, setAge] = useState('');
   const [gender, setGender] = useState('');
   const [contactNumber, setContactNumber] = useState('');
+  const [location, setLocation] = useState('');
+  const [emergencyLevel, setEmergencyLevel] = useState('normal checkup');
   const [problem, setProblem] = useState('');
   const [appointmentDate, setAppointmentDate] = useState('');
   const [startTime, setStartTime] = useState('');
@@ -47,7 +49,9 @@ function AppointmentFormPage() {
         doctor_id: Number(doctorId),
         symptoms_analysis: symptomsAnalysis,
         appointment_date: appointmentDate,
-        start_time: startTime
+        start_time: startTime,
+        location: location.trim(),
+        emergency_level: emergencyLevel
       });
       navigate('/dashboard');
     } catch (err) {
@@ -260,6 +264,31 @@ function AppointmentFormPage() {
                     placeholder="e.g. +1 555-0101"
                   />
                   <FaPhone className="input-icon" />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px', marginTop: '24px' }}>
+                <div className="custom-input-group" style={{ marginBottom: 0 }}>
+                  <label className="custom-label">Location</label>
+                  <input
+                    required
+                    type="text"
+                    className="custom-input"
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    placeholder="e.g. Chennai, Madurai"
+                  />
+                  <FaMapMarkerAlt className="input-icon" />
+                </div>
+                <div className="custom-input-group" style={{ marginBottom: 0 }}>
+                  <label className="custom-label">Emergency Level</label>
+                  <select required className="custom-select" value={emergencyLevel} onChange={(e) => setEmergencyLevel(e.target.value)} style={{ paddingLeft: '44px' }}>
+                    <option value="high">High Emergency</option>
+                    <option value="medium">Medium</option>
+                    <option value="low">Low</option>
+                    <option value="normal checkup">Normal Checkup</option>
+                  </select>
+                  <FaExclamationCircle className="input-icon" style={{ top: '40px' }} />
                 </div>
               </div>
 
