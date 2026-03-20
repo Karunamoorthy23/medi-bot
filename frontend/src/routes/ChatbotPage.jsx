@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { FaPaperPlane, FaRobot, FaUser, FaTrash, FaPlus, FaBars, FaTimes, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
+import {
+  FaPaperPlane, FaRobot, FaUser, FaTrash, FaPlus, FaBars, FaTimes,
+  FaChevronLeft, FaChevronRight, FaExclamationCircle, FaExclamationTriangle,
+  FaInfoCircle, FaCheckCircle, FaMars, FaVenus, FaTransgender,
+  FaUserMd, FaCalendarAlt, FaClock
+} from 'react-icons/fa';
 import Navbar from '../components/Layout/Navbar';
 import Card from '../components/Widget/Card';
 import AppointmentModal from '../components/AppointmentModal';
@@ -773,7 +778,7 @@ function ChatbotPage() {
                                   onClick={() => handleOptionClick(opt.value)}
                                   disabled={loading}
                                 >
-                                  👨‍⚕️ {opt.label || opt.value || 'Doctor Option'}
+                                  <FaUserMd /> {opt.label?.replace('👨‍⚕️', '').trim() || opt.value}
                                 </button>
                               ))}
                             </div>
@@ -788,7 +793,7 @@ function ChatbotPage() {
                                   onClick={() => handleOptionClick(opt.value)}
                                   disabled={loading}
                                 >
-                                  📅 {opt.label || opt.value || 'Date Option'}
+                                  <FaCalendarAlt /> {opt.label?.replace('📅', '').trim() || opt.value}
                                 </button>
                               ))}
                             </div>
@@ -803,7 +808,7 @@ function ChatbotPage() {
                                   onClick={() => handleOptionClick(opt.value)}
                                   disabled={loading}
                                 >
-                                  🕐 {opt.label || opt.value || 'Time Option'}
+                                  <FaClock /> {opt.label?.replace('🕐', '').trim() || opt.value}
                                 </button>
                               ))}
                             </div>
@@ -844,7 +849,10 @@ function ChatbotPage() {
                                         opt.value === 'low' ? '#fef08a' : '#bbf7d0'}`
                                   }}
                                 >
-                                  {opt.label || opt.value}
+                                  {opt.value === 'high' ? <FaExclamationCircle /> :
+                                    opt.value === 'medium' ? <FaExclamationTriangle /> :
+                                      opt.value === 'low' ? <FaInfoCircle /> : <FaCheckCircle />}
+                                  {opt.label?.replace(/[🔴🟠🟡🟢]/g, '').trim() || opt.value}
                                 </button>
                               ))}
                             </div>

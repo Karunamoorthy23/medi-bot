@@ -7,6 +7,7 @@ import DoctorLoginPage from './routes/DoctorLoginPage';
 import ChatbotPage from './routes/ChatbotPage';
 import AppointmentFormPage from './routes/AppointmentFormPage';
 import DoctorsPage from './routes/DoctorsPage';
+import DoctorChatbotPage from './routes/DoctorChatbotPage';
 
 function App() {
   return (
@@ -17,6 +18,7 @@ function App() {
         <Route path="/doctors" element={<DoctorsPage />} />
         <Route path="/doctor-dashboard" element={<DoctorDashboardPage />} />
         <Route path="/chatbot" element={<ChatbotPage />} />
+        <Route path="/doctor-chatbot" element={<DoctorChatbotPage />} />
         <Route path="/appointment" element={<AppointmentFormPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/doctor-login" element={<DoctorLoginPage />} />

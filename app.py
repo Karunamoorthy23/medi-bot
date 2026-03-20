@@ -1,6 +1,6 @@
 from flask import Flask, request, redirect, url_for, session, jsonify, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
-from flask_cors import CORS
+from flask_cors import CORS, cross_origin
 from datetime import datetime, timedelta
 import os
 import time
@@ -11,6 +11,7 @@ import re
 import warnings
 from dotenv import load_dotenv
 from patient_agent import PatientAgent
+from doctor_query_agent import DoctorAgent
 warnings.filterwarnings("ignore", category=FutureWarning)
 
 # Load environment variables from .env file
@@ -28,14 +29,17 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + db_path.replace('\\', '/'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Allow React (Vite) frontend to call Flask with session cookies
-frontend_origins = os.environ.get('FRONTEND_ORIGIN', 'http://localhost:5174').split(',')
-frontend_origins = [origin.strip() for origin in frontend_origins]
+frontend_origin_env = os.environ.get('FRONTEND_ORIGIN', 'http://localhost:5174,http://localhost:5173')
+frontend_origins = [origin.strip() for origin in frontend_origin_env.split(',')]
+
 CORS(app, 
      supports_credentials=True,
-     origins=frontend_origins,
-     allow_headers=['Content-Type', 'Authorization'],
-     methods=['GET', 'POST', 'OPTIONS', 'PUT', 'DELETE'],
-     expose_headers=['Content-Type'])
+     resources={r"/*": {
+         "origins": frontend_origins,
+         "allow_headers": ['Content-Type', 'Authorization'],
+         "methods": ['GET', 'POST', 'OPTIONS', 'PUT', 'DELETE'],
+         "expose_headers": ['Content-Type']
+     }})
 
 # Initialize database
 db = SQLAlchemy(app)
@@ -83,7 +87,8 @@ class ChatHistory(db.Model):
     __tablename__ = 'chat_history'
     id = db.Column(db.Integer, primary_key=True)
     chat_id = db.Column(db.String(50), nullable=True)  # Link to conversation
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    doctor_id = db.Column(db.Integer, db.ForeignKey('doctors.id'), nullable=True)
     message = db.Column(db.Text, nullable=False)
     response = db.Column(db.Text, nullable=False)
     detected_symptoms = db.Column(db.Text, nullable=True)
@@ -95,7 +100,8 @@ class ChatHistory(db.Model):
 class Chat(db.Model):
     __tablename__ = 'chats'
     id = db.Column(db.String(50), primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    doctor_id = db.Column(db.Integer, db.ForeignKey('doctors.id'), nullable=True)
     title = db.Column(db.String(255), default='New Conversation')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -137,10 +143,33 @@ patient_agent = PatientAgent(
     doctor_query_func=get_doctors_for_agent
 )
 
-# Login decorators
+def get_appointments_for_doctor_agent(doctor_id, location=None, emergency_level=None, recent=False):
+    with app.app_context():
+        query = Appointment.query.filter_by(doctor_id=doctor_id)
+        if location:
+            query = query.filter(Appointment.location.ilike(f"%{location}%"))
+        if emergency_level:
+            # Handle user typing priority/priority_level etc.
+            query = query.filter(Appointment.emergency_level == emergency_level)
+            
+        if recent:
+            today = datetime.now().date()
+            query = query.filter(Appointment.appointment_date >= today - timedelta(days=7))
+        
+        return query.order_by(Appointment.created_at.desc()).all()
+
+doctor_agent = DoctorAgent(
+    db_models={'Doctor': Doctor, 'Appointment': Appointment, 'User': User},
+    query_appointments_func=get_appointments_for_doctor_agent
+)
+
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
+        # Allow OPTIONS preflight requests from CORS
+        if request.method == 'OPTIONS':
+            return f(*args, **kwargs)
+            
         if 'user_id' not in session:
             if request.path.startswith('/api/') or request.is_json:
                 return jsonify({'success': False, 'error': 'Not authenticated'}), 401
@@ -151,6 +180,10 @@ def login_required(f):
 def doctor_login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
+        # Allow OPTIONS preflight requests from CORS
+        if request.method == 'OPTIONS':
+            return f(*args, **kwargs)
+
         if 'doctor_id' not in session:
             if request.path.startswith('/api/') or request.is_json:
                 return jsonify({'success': False, 'error': 'Not authenticated'}), 401
@@ -790,6 +823,7 @@ def check_doctor_availability(doctor_id, date, start_time, duration):
 # Chat Management Endpoints (for ChatGPT-like sidebar)
 
 @app.route('/get_all_chats', methods=['GET'])
+@cross_origin(supports_credentials=True)
 @login_required
 def get_all_chats():
     """Get all chats for the current user that have messages, ordered by most recent"""
@@ -821,6 +855,7 @@ def get_all_chats():
     })
 
 @app.route('/get_chat_messages/<chat_id>', methods=['GET'])
+@cross_origin(supports_credentials=True)
 @login_required
 def get_chat_messages(chat_id):
     """Get all messages for a specific chat"""
@@ -856,6 +891,7 @@ def get_chat_messages(chat_id):
     })
 
 @app.route('/delete_chat/<chat_id>', methods=['POST'])
+@cross_origin(supports_credentials=True)
 @login_required
 def delete_chat(chat_id):
     """Delete a chat and all its messages"""
@@ -874,6 +910,93 @@ def delete_chat(chat_id):
     db.session.commit()
     
     return jsonify({'success': True})
+
+# DOCTOR CHAT ENDPOINTS
+@app.route('/api/doctor/get_all_chats', methods=['GET'])
+@cross_origin(supports_credentials=True)
+@doctor_login_required
+def api_doctor_get_all_chats():
+    doctor_id = session.get('doctor_id')
+    chats = Chat.query.filter_by(doctor_id=doctor_id).order_by(Chat.updated_at.desc()).all()
+    return jsonify({
+        'success': True,
+        'chats': [{'id': c.id, 'title': c.title, 'created_at': c.created_at.isoformat()} for c in chats]
+    })
+
+@app.route('/api/doctor/get_chat_messages/<chat_id>', methods=['GET'])
+@cross_origin(supports_credentials=True)
+@doctor_login_required
+def api_doctor_get_chat_messages(chat_id):
+    doctor_id = session.get('doctor_id')
+    messages = ChatHistory.query.filter_by(chat_id=chat_id, doctor_id=doctor_id).order_by(ChatHistory.timestamp.asc()).all()
+    return jsonify({
+        'success': True,
+        'messages': [{'message': m.message, 'response': m.response, 'timestamp': m.timestamp.isoformat()} for m in messages]
+    })
+
+@app.route('/api/doctor/delete_chat/<chat_id>', methods=['POST'])
+@cross_origin(supports_credentials=True)
+@doctor_login_required
+def api_doctor_delete_chat(chat_id):
+    doctor_id = session.get('doctor_id')
+    ChatHistory.query.filter_by(chat_id=chat_id, doctor_id=doctor_id).delete()
+    Chat.query.filter_by(id=chat_id, doctor_id=doctor_id).delete()
+    db.session.commit()
+    return jsonify({'success': True})
+
+@app.route('/api/doctor/send_message', methods=['POST'])
+@cross_origin(supports_credentials=True)
+@doctor_login_required
+def api_doctor_send_message():
+    data = request.get_json()
+    user_message = data.get('message', '')
+    chat_id = data.get('chat_id')
+    doctor_id = session.get('doctor_id')
+    
+    if not chat_id:
+        chat_id = "doc_" + str(int(time.time() * 1000))
+        
+    chat_record = Chat.query.get(chat_id)
+    if not chat_record:
+        chat_title = user_message.strip()[:50] if user_message.strip() else 'Doctor Consultation'
+        new_chat = Chat(id=chat_id, doctor_id=doctor_id, title=chat_title)
+        db.session.add(new_chat)
+        db.session.commit()
+    
+    if 'doctor_contexts' not in session:
+        session['doctor_contexts'] = {}
+    
+    session_context = session['doctor_contexts'].get(chat_id, {'state': 'IDLE'})
+    
+    # Process through DoctorAgent
+    result = doctor_agent.process_doctor_query(user_message, session_context, doctor_id)
+    
+    session['doctor_contexts'][chat_id] = result.get('session_context')
+    session.modified = True
+    
+    response_text = result.get('response', '')
+    
+    chat_history = ChatHistory(
+        doctor_id=doctor_id,
+        chat_id=chat_id,
+        message=user_message,
+        response=response_text
+    )
+    db.session.add(chat_history)
+    
+    chat = Chat.query.get(chat_id)
+    if chat:
+        chat.updated_at = datetime.utcnow()
+        
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'response': response_text,
+        'chat_id': chat_id,
+        'chat_title': chat.title if chat else 'Chat'
+    })
+
 
 if __name__ == '__main__':
     app.run(debug=True)

@@ -14,7 +14,7 @@ function Navbar() {
         // First try local storage for immediate display
         if (isDoctor) {
             const storedDoctor = localStorage.getItem('doctorName');
-            if (storedDoctor) setUserName(`Dr. ${storedDoctor}`);
+            if (storedDoctor) setUserName(`${storedDoctor}`);
         } else {
             const storedUser = localStorage.getItem('userName');
             if (storedUser) setUserName(storedUser);
@@ -25,7 +25,7 @@ function Navbar() {
             .then(data => {
                 if (!mounted) return;
                 if (isDoctor && data?.doctor) {
-                    setUserName(`Dr. ${data.doctor.name}`);
+                    setUserName(`${data.doctor.name}`);
                     localStorage.setItem('doctorName', data.doctor.name);
                 } else if (!isDoctor && data?.user) {
                     setUserName(data.user.username);
@@ -106,6 +106,7 @@ function Navbar() {
                 {isDoctor ? (
                     <>
                         <Link to="/doctor-dashboard" className="btn btn-outline" style={{ border: 'none' }}>Portal</Link>
+                        <Link to="/doctor-chatbot" className="btn btn-outline" style={{ border: 'none' }}>Doctor AI</Link>
                     </>
                 ) : (
                     <>
