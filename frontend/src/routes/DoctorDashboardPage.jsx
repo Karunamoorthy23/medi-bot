@@ -180,23 +180,58 @@ function DoctorDashboardPage() {
         </div>
 
         {/* Stats Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
-          <Card style={{ padding: '16px', display: 'flex', alignItems: 'center', gap: '16px', border: '1px solid #f1f5f9', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-            <div style={{ padding: '12px', background: '#fff7ed', borderRadius: '10px', color: '#ea580c' }}><FaHourglassHalf size={20} /></div>
-            <div><div style={{ color: '#64748b', fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Pending</div><div style={{ fontSize: '20px', fontWeight: 700, color: '#0f172a' }}>{stats.pending}</div></div>
-          </Card>
-          <Card style={{ padding: '16px', display: 'flex', alignItems: 'center', gap: '16px', border: '1px solid #f1f5f9', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-            <div style={{ padding: '12px', background: '#f0fdf4', borderRadius: '10px', color: '#16a34a' }}><FaCheckCircle size={20} /></div>
-            <div><div style={{ color: '#64748b', fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Approved</div><div style={{ fontSize: '20px', fontWeight: 700, color: '#0f172a' }}>{stats.approved}</div></div>
-          </Card>
-          <Card style={{ padding: '16px', display: 'flex', alignItems: 'center', gap: '16px', border: '1px solid #f1f5f9', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-            <div style={{ padding: '12px', background: '#eff6ff', borderRadius: '10px', color: '#2563eb' }}><FaCheckDouble size={20} /></div>
-            <div><div style={{ color: '#64748b', fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Completed</div><div style={{ fontSize: '20px', fontWeight: 700, color: '#0f172a' }}>{stats.completed}</div></div>
-          </Card>
-          <Card style={{ padding: '16px', display: 'flex', alignItems: 'center', gap: '16px', border: '1px solid #f1f5f9', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-            <div style={{ padding: '12px', background: '#f1f5f9', borderRadius: '10px', color: '#475569' }}><FaClipboardList size={20} /></div>
-            <div><div style={{ color: '#64748b', fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Total</div><div style={{ fontSize: '20px', fontWeight: 700, color: '#0f172a' }}>{stats.total}</div></div>
-          </Card>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '20px', marginBottom: '24px', maxWidth: '1400px' }}>
+          {[
+            { label: 'Pending', count: stats.pending, icon: <FaHourglassHalf size={20} />, bg: '#fff7ed', color: '#ea580c' },
+            { label: 'Approved', count: stats.approved, icon: <FaCheckCircle size={20} />, bg: '#f0fdf4', color: '#16a34a' },
+            { label: 'Completed', count: stats.completed, icon: <FaCheckDouble size={20} />, bg: '#eff6ff', color: '#2563eb' },
+            { label: 'Total', count: stats.total, icon: <FaClipboardList size={20} />, bg: '#f1f5f9', color: '#475569' }
+          ].map((stat) => (
+            <Card
+              key={stat.label}
+              style={{
+                padding: '14px 20px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '16px',
+                border: '1px solid #eef2f6',
+                boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -2px rgba(0,0,0,0.05)',
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                cursor: 'default'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-4px)';
+                e.currentTarget.style.boxShadow = '0 12px 20px -8px rgba(0,0,0,0.1)';
+                e.currentTarget.style.borderColor = '#cbd5e1';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -2px rgba(0,0,0,0.05)';
+                e.currentTarget.style.borderColor = '#eef2f6';
+              }}
+            >
+              <div style={{
+                padding: '14px',
+                background: stat.bg,
+                borderRadius: '14px',
+                color: stat.color,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: `0 8px 16px -4px ${stat.bg}`
+              }}>
+                {stat.icon}
+              </div>
+              <div>
+                <div style={{ color: '#64748b', fontSize: '13px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  {stat.label}
+                </div>
+                <div style={{ fontSize: '22px', fontWeight: 800, color: '#0f172a', lineHeight: '1', marginTop: '4px' }}>
+                  {stat.count}
+                </div>
+              </div>
+            </Card>
+          ))}
         </div>
 
         {/* Filters */}
