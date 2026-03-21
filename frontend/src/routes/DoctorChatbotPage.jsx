@@ -4,7 +4,7 @@ import {
     FaPaperPlane, FaRobot, FaUser, FaTrash, FaPlus, FaBars, FaTimes,
     FaChevronLeft, FaChevronRight, FaExclamationCircle, FaExclamationTriangle,
     FaInfoCircle, FaCheckCircle, FaMars, FaVenus, FaTransgender,
-    FaUserMd, FaCalendarAlt, FaClock
+    FaUserMd, FaCalendarAlt, FaClock, FaMicrophone, FaMicrophoneSlash
 } from 'react-icons/fa';
 import Navbar from '../components/Layout/Navbar';
 import Card from '../components/Widget/Card';
@@ -34,7 +34,69 @@ function DoctorChatbotPage() {
     const [sidebarOpen, setSidebarOpen] = useState(true);
     const [isAuthenticated, setIsAuthenticated] = useState(true);
     const [authError, setAuthError] = useState('');
+    const [listening, setListening] = useState(false);
+    const [speechSupported, setSpeechSupported] = useState(false);
+    const [interimText, setInterimText] = useState('');
+    const recognitionRef = useRef(null);
     const chatEndRef = useRef(null);
+
+    // Initialize Speech Recognition
+    useEffect(() => {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (SpeechRecognition) {
+            setSpeechSupported(true);
+            const recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = true;
+            recognition.lang = 'en-US';
+
+            recognition.onresult = (event) => {
+                let interim = '';
+                let final = '';
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    if (event.results[i].isFinal) {
+                        final += event.results[i][0].transcript;
+                    } else {
+                        interim += event.results[i][0].transcript;
+                    }
+                }
+                if (final) {
+                    setInput(prev => (prev + ' ' + final).trim());
+                    setInterimText('');
+                } else {
+                    setInterimText(interim);
+                }
+            };
+
+            recognition.onend = () => {
+                setListening(false);
+                setInterimText('');
+            };
+
+            recognition.onerror = (event) => {
+                console.error('Speech recognition error:', event.error);
+                setListening(false);
+                setInterimText('');
+                if (event.error !== 'no-speech' && event.error !== 'aborted') {
+                    setError('Microphone error: ' + event.error);
+                }
+            };
+
+            recognitionRef.current = recognition;
+        }
+    }, []);
+
+    const toggleListening = () => {
+        if (!recognitionRef.current) return;
+        if (listening) {
+            recognitionRef.current.stop();
+            setListening(false);
+        } else {
+            setError('');
+            recognitionRef.current.start();
+            setListening(true);
+        }
+    };
 
     // Load all doctor chats
     const loadAllChats = async () => {
@@ -193,11 +255,8 @@ function DoctorChatbotPage() {
                             position: 'relative',
                         }}
                     >
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', borderBottom: '1px solid #444' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', padding: '12px', borderBottom: '1px solid #444', minHeight: '50px' }}>
                             <h3 style={{ margin: 0, fontSize: '14px', color: '#999', textTransform: 'uppercase' }}>Consultations</h3>
-                            <button onClick={() => setSidebarOpen(!sidebarOpen)} style={{ background: 'transparent', border: 'none', color: '#999', cursor: 'pointer', padding: '8px' }}>
-                                {sidebarOpen ? <FaChevronLeft size={16} /> : <FaChevronRight size={16} />}
-                            </button>
                         </div>
 
                         <button
@@ -226,20 +285,46 @@ function DoctorChatbotPage() {
                         </div>
                     </div>
 
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative' }}>
-                        {!sidebarOpen && (
-                            <button onClick={() => setSidebarOpen(true)} style={{ position: 'absolute', top: '12px', left: '12px', zIndex: 999, background: 'transparent', border: 'none', color: '#999', cursor: 'pointer', padding: '10px', borderRadius: '6px', border: '1px solid #ddd' }}>
-                                <FaBars size={18} />
-                            </button>
-                        )}
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
                         <main style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                            <Card title="Doctor AI Assistant" className="mb-md" style={{ flex: 1, display: 'flex', flexDirection: 'column', margin: '16px' }}>
-                                <div className="chat-container" style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
+                            <Card title={null} flex className="mb-md" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                                {/* Top bar: sidebar toggle + title */}
+                                <div style={{
+                                    display: 'flex', alignItems: 'center', gap: '12px',
+                                    padding: '12px 16px', borderBottom: '1px solid #e2e8f0',
+                                    backgroundColor: 'white', flexShrink: 0
+                                }}>
+                                    <button
+                                        onClick={() => setSidebarOpen(!sidebarOpen)}
+                                        title={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+                                        style={{
+                                            background: 'transparent', border: '1px solid #e2e8f0',
+                                            borderRadius: '6px', color: '#64748b', cursor: 'pointer',
+                                            padding: '6px 8px', display: 'flex', alignItems: 'center',
+                                            justifyContent: 'center', transition: 'all 0.2s ease', flexShrink: 0
+                                        }}
+                                        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#f1f5f9'; e.currentTarget.style.color = '#1e293b'; }}
+                                        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#64748b'; }}
+                                    >
+                                        {sidebarOpen ? <FaChevronLeft size={14} /> : <FaBars size={14} />}
+                                    </button>
+                                    <span style={{ fontWeight: '600', fontSize: '20px', color: '#1e293b' }}>Doctor AI Assistant</span>
+                                </div>
+
+                                <div className="chat-container" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                                     <style>{`
                     @keyframes chatbotDot { 
                       0%, 60%, 100% { transform: translateY(0); opacity: 0.35; } 
                       30% { transform: translateY(-4px); opacity: 1; } 
+                    }
+                    @keyframes micPulse {
+                      0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6); }
+                      70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+                      100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+                    }
+                    .mic-btn-listening {
+                      animation: micPulse 1.2s infinite;
                     }
                     .chat-history::-webkit-scrollbar { width: 6px; }
                     .chat-history::-webkit-scrollbar-thumb { background: #cbd5e1; borderRadius: 3px; }
@@ -273,31 +358,54 @@ function DoctorChatbotPage() {
                                         <div ref={chatEndRef} />
                                     </div>
 
+                                    {error && (
+                                        <div style={{ color: '#ef4444', padding: '4px 20px', fontSize: '12px', backgroundColor: 'white' }}>{error}</div>
+                                    )}
+                                    {interimText && (
+                                        <div style={{ padding: '4px 20px 0', fontSize: '12px', color: '#94a3b8', backgroundColor: 'white', fontStyle: 'italic' }}>
+                                            🎙️ {interimText}
+                                        </div>
+                                    )}
                                     <form
                                         onSubmit={handleSend}
-                                        style={{ padding: '20px', borderTop: '1px solid #e2e8f0', display: 'flex', gap: '12px', backgroundColor: 'white' }}
+                                        style={{ padding: '20px', borderTop: '1px solid rgb(226, 232, 240)', display: 'flex', gap: '12px', backgroundColor: 'white', alignItems: 'center' }}
                                     >
                                         <input
                                             type="text"
                                             className="form-control"
-                                            placeholder="Ask for medical consultation or query patients (e.g., 'List high priority patients')..."
+                                            placeholder={listening ? '🎙️ Listening... speak now' : "Ask for medical consultation or query patients..."}
                                             value={input}
                                             onChange={(e) => setInput(e.target.value)}
-                                            style={{ flex: 1, padding: '12px', borderRadius: '10px', border: '1px solid #cbd5e1', outline: 'none' }}
+                                            style={{ flex: 1, padding: '12px', borderRadius: '10px', border: listening ? '1.5px solid #ef4444' : '1px solid #cbd5e1', outline: 'none', transition: 'border-color 0.2s' }}
                                             disabled={loading}
                                         />
+                                        {speechSupported && (
+                                            <button
+                                                type="button"
+                                                onClick={toggleListening}
+                                                disabled={loading}
+                                                className={listening ? 'mic-btn-listening' : ''}
+                                                title={listening ? 'Stop listening' : 'Start voice input'}
+                                                style={{
+                                                    width: '44px', height: '44px', borderRadius: '10px', border: 'none',
+                                                    backgroundColor: listening ? '#ef4444' : '#f1f5f9',
+                                                    color: listening ? 'white' : '#64748b',
+                                                    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    flexShrink: 0, transition: 'all 0.2s'
+                                                }}
+                                            >
+                                                {listening ? <FaMicrophoneSlash size={16} /> : <FaMicrophone size={16} />}
+                                            </button>
+                                        )}
                                         <button
                                             type="submit"
                                             className="btn btn-primary"
                                             disabled={!input.trim() || loading}
-                                            style={{ backgroundColor: '#1e40af', border: 'none', borderRadius: '10px', padding: '0 20px' }}
+                                            style={{ backgroundColor: '#1e40af', border: 'none', borderRadius: '10px', padding: '0 20px', height: '44px', flexShrink: 0 }}
                                         >
                                             <FaPaperPlane />
                                         </button>
                                     </form>
-                                    {error && (
-                                        <div style={{ color: '#ef4444', padding: '0 20px 10px', fontSize: '12px' }}>{error}</div>
-                                    )}
                                 </div>
                             </Card>
                         </main>
