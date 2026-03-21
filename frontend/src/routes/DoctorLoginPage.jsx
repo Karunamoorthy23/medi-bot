@@ -82,7 +82,7 @@ function DoctorLoginPage() {
 
                     <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                         <div className="form-group" style={{ margin: 0 }}>
-                            <label style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '8px', display: 'block' }}>Doctor Name</label>
+                            <label style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '8px', display: 'block' }}>Select Doctor</label>
                             <div style={{ position: 'relative' }}>
                                 <div style={{ position: 'absolute', top: '50%', left: '16px', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }}>
                                     <FaUserMd />
@@ -94,10 +94,10 @@ function DoctorLoginPage() {
                                     onChange={(e) => setDoctorName(e.target.value)}
                                     style={{ paddingLeft: '44px', height: '52px', borderRadius: '12px', border: '1px solid var(--border-color)', backgroundColor: '#f9fafb', fontSize: '15px', appearance: 'none', width: '100%' }}
                                 >
-                                    <option value="">Select Doctor</option>
+                                    <option value="">Choose your profile...</option>
                                     {doctors.map((d) => (
                                         <option key={d.id} value={d.name}>
-                                            {d.name} ({d.specialization})
+                                            {d.name} ({d.specialization}) {d.email ? ` - ${d.email}` : ''}
                                         </option>
                                     ))}
                                 </select>
@@ -152,13 +152,22 @@ function DoctorLoginPage() {
                         <div style={{ height: '1px', background: '#e2e8f0', margin: '24px 0', position: 'relative' }}>
                             <span style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: 'transparent', padding: '0 16px', color: 'var(--text-muted)', fontSize: '13px', fontWeight: '500' }}>OR</span>
                         </div>
-                        <Link to="/login" style={{
-                            color: 'var(--text-secondary)', fontSize: '15px', fontWeight: '500',
-                            display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '12px 24px',
-                            borderRadius: '12px', border: '1px solid var(--border-color)', backgroundColor: '#f8fafc', transition: 'all 0.2s', width: '100%', justifyContent: 'center'
-                        }}>
-                            Sign in as a Patient
-                        </Link>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            <Link to="/login" style={{
+                                color: 'var(--text-secondary)', fontSize: '15px', fontWeight: '500',
+                                display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '12px 24px',
+                                borderRadius: '12px', border: '1px solid var(--border-color)', backgroundColor: '#f8fafc', transition: 'all 0.2s', width: '100%', justifyContent: 'center', boxSizing: 'border-box'
+                            }}>
+                                Sign in as a Patient
+                            </Link>
+                            <Link to="/doctor-register" style={{
+                                color: 'var(--text-secondary)', fontSize: '15px', fontWeight: '500',
+                                display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '12px 24px',
+                                borderRadius: '12px', border: '1px solid var(--border-color)', backgroundColor: '#f8fafc', transition: 'all 0.2s', width: '100%', justifyContent: 'center', boxSizing: 'border-box'
+                            }}>
+                                Don't have an account? <strong style={{ color: '#43cea2' }}>Create account</strong>
+                            </Link>
+                        </div>
                     </div>
                 </div>
             </div>

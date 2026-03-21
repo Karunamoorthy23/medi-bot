@@ -4,6 +4,7 @@ import DoctorDashboardPage from './routes/DoctorDashboardPage';
 import LoginPage from './routes/LoginPage';
 import RegisterPage from './routes/RegisterPage';
 import DoctorLoginPage from './routes/DoctorLoginPage';
+import DoctorRegisterPage from './routes/DoctorRegisterPage';
 import ChatbotPage from './routes/ChatbotPage';
 import AppointmentFormPage from './routes/AppointmentFormPage';
 import DoctorsPage from './routes/DoctorsPage';
@@ -22,6 +23,7 @@ function App() {
         <Route path="/appointment" element={<AppointmentFormPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/doctor-login" element={<DoctorLoginPage />} />
+        <Route path="/doctor-register" element={<DoctorRegisterPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="*" element={<div className="page-error">Page not found</div>} />
       </Routes>

@@ -57,6 +57,7 @@ class Doctor(db.Model):
     __tablename__ = 'doctors'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(50), unique=True, nullable=False)
+    email = db.Column(db.String(100), unique=True, nullable=True)
     specialization = db.Column(db.String(100), nullable=False)
     password = db.Column(db.String(100), default='123')
     consultation_duration = db.Column(db.Integer, default=30)
@@ -112,11 +113,11 @@ with app.app_context():
     
     # Add predefined doctors if not exists
     doctors_data = [
-        {'name': 'Dr. Smith', 'specialization': 'General Physician', 'duration': 30},
-        {'name': 'Dr. Johnson', 'specialization': 'Orthopedic Doctor', 'duration': 30},
-        {'name': 'Dr. Williams', 'specialization': 'Pediatrician', 'duration': 30},
-        {'name': 'Dr. Brown', 'specialization': 'Ophthalmologist', 'duration': 30},
-        {'name': 'Dr. Jones', 'specialization': 'Dermatologist', 'duration': 30}
+        {'name': 'Dr. Smith', 'email': 'smith@medipro.com', 'specialization': 'General Physician', 'duration': 30},
+        {'name': 'Dr. Johnson', 'email': 'johnson@medipro.com', 'specialization': 'Orthopedic Doctor', 'duration': 30},
+        {'name': 'Dr. Williams', 'email': 'williams@medipro.com', 'specialization': 'Pediatrician', 'duration': 30},
+        {'name': 'Dr. Brown', 'email': 'brown@medipro.com', 'specialization': 'Ophthalmologist', 'duration': 30},
+        {'name': 'Dr. Jones', 'email': 'jones@medipro.com', 'specialization': 'Dermatologist', 'duration': 30}
     ]
     
     for doc_data in doctors_data:
@@ -124,6 +125,7 @@ with app.app_context():
         if not doctor:
             doctor = Doctor(
                 name=doc_data['name'],
+                email=doc_data['email'],
                 specialization=doc_data['specialization'],
                 password='123',
                 consultation_duration=doc_data['duration']
@@ -293,6 +295,7 @@ def serialize_doctor(d):
     return {
         'id': d.id,
         'name': d.name,
+        'email': d.email,
         'specialization': d.specialization,
         'consultation_duration': d.consultation_duration,
     }
@@ -394,13 +397,17 @@ def api_logout():
 @app.route('/api/doctor/login', methods=['POST'])
 def api_doctor_login():
     data = request.get_json(force=True, silent=True) or {}
-    doctor_name = (data.get('doctor_name') or data.get('name') or '').strip()
+    identifier = (data.get('doctor_name') or data.get('name') or data.get('identifier') or '').strip()
     password = data.get('password') or ''
 
-    if not doctor_name or not password:
-        return jsonify({'success': False, 'error': 'doctor_name and password are required'}), 400
+    if not identifier or not password:
+        return jsonify({'success': False, 'error': 'identifier and password are required'}), 400
 
-    doctor = Doctor.query.filter_by(name=doctor_name, password=password).first()
+    doctor = Doctor.query.filter(
+        (Doctor.name == identifier) | (Doctor.email == identifier.lower()),
+        Doctor.password == password
+    ).first()
+    
     if not doctor:
         return jsonify({'success': False, 'error': 'Invalid credentials'}), 401
 
@@ -416,6 +423,36 @@ def api_doctor_logout():
     session.pop('doctor_id', None)
     session.pop('doctor_name', None)
     return jsonify({'success': True})
+
+
+@app.route('/api/doctor/register', methods=['POST'])
+def api_doctor_register():
+    data = request.get_json(force=True, silent=True) or {}
+    name = (data.get('name') or '').strip()
+    email = (data.get('email') or '').strip().lower()
+    specialization = (data.get('specialization') or '').strip()
+    password = data.get('password') or ''
+    consultation_duration = int(data.get('consultation_duration') or 30)
+
+    if not name or not email or not specialization or not password:
+        return jsonify({'success': False, 'error': 'name, email, specialization, and password are required'}), 400
+
+    if Doctor.query.filter_by(name=name).first():
+        return jsonify({'success': False, 'error': 'A doctor with this name already exists'}), 409
+    if Doctor.query.filter_by(email=email).first():
+        return jsonify({'success': False, 'error': 'Email already registered'}), 409
+
+    new_doctor = Doctor(
+        name=name,
+        email=email,
+        specialization=specialization,
+        password=password,
+        consultation_duration=consultation_duration
+    )
+    db.session.add(new_doctor)
+    db.session.commit()
+
+    return jsonify({'success': True, 'doctor': serialize_doctor(new_doctor)})
 
 
 @app.route('/api/doctors', methods=['GET'])
