@@ -294,6 +294,8 @@ def check_doctor_availability_status():
             'id': doctor.id,
             'name': doctor.name,
             'specialization': doctor.specialization,
+            'hospital': doctor.hospital,
+            'city': doctor.city,
             'available': available,
             'status': status,
             'total_appointments': total_appointments_today
