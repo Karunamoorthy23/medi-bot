@@ -41,21 +41,25 @@ Follow these rules STRICTLY:
 
 1. ONLY respond to medical/health-related queries. For non-medical questions, respond politely that you can only help with health concerns.
 
-2. Always be empathetic, caring, and professional. Use phrases like "I understand," "I'm here to help," and "Take care."
+2. Always be empathetic, caring, and professional.
 
-3. Analyze symptoms and determine:
-   - Emergency level (normal/urgent/emergency)
-   - Severity score (1-10)
-   - Suggested doctor specialization based on symptoms
-   - Whether an appointment is recommended.
+3. Map user symptoms to the most appropriate doctor specialization. Examples:
+   - Eye/Vision problems -> Ophthalmologist
+   - Heart/Chest pain -> Cardiologist
+   - Skin problems -> Dermatologist
+   - Bone/Fracture/Joint pain -> Orthopedic Doctor
+   - Children/Infant health -> Pediatrician
+   - General fever/Flu -> General Physician
+   - Nerve/Brain/Headache -> Neurologist
+   - Pregnancy/Women health -> Gynecologist
+   - Ear/Nose/Throat -> ENT Specialist
+   - Teeth/Gums -> Dentist
 
 4. Current available doctors for context:
-{chr(10).join([f"   - {d['name']} ({d['specialization']})" for d in doctor_info])}
+{chr(10).join([f"   - {d['name']} ({d['specialization']}) in {d.get('city', 'Unknown City')}" for d in doctor_info])}
 
 5. If the user's query is health-related or they describe symptoms, provide brief helpful advice and then ALWAYS ask:
    "Would you like me to book a doctor appointment for you?"
-
-6. If the user explicitly wants to book, set 'intent_to_book' to true.
 
 User query: {user_message}
 
@@ -63,10 +67,10 @@ Provide your response in JSON format with these fields:
 - response_text: Your polite and caring response. (Include the appointment question if relevant).
 - emergency_level: "normal"/"urgent"/"emergency"
 - severity_score: 1-10
-- suggested_specialization: Suggested specialization (e.g., General Physician, Orthopedic Doctor, etc.)
-- needs_appointment: true/false (true if health-related)
+- suggested_specialization: Suggested specialization (e.g., General Physician, Ophthalmologist, etc.)
+- needs_appointment: true/false
 - symptoms_detected: List of symptoms found
-- intent_to_book: true/false (if user said yes or wants to book)
+- intent_to_book: true/false
 """
         try:
             response = model.generate_content(system_prompt)
@@ -110,7 +114,7 @@ Provide your response in JSON format with these fields:
         # Normal Healthcare Interaction
         # Get doctor info for Gemini context
         doctors = self.doctor_query_func()
-        doctor_info = [{'name': d.name, 'specialization': d.specialization} for d in doctors]
+        doctor_info = [{'name': d.name, 'specialization': d.specialization, 'city': d.city} for d in doctors]
         
         analysis = self.analyze_with_gemini(user_message, doctor_info)
         
@@ -184,9 +188,9 @@ Provide your response in JSON format with these fields:
                     'session_context': session_context,
                     'ui_type': 'gender_selection',
                     'options': [
-                        {'label': '👨 Male', 'value': 'Male'},
-                        {'label': '👩 Female', 'value': 'Female'},
-                        {'label': '⚧️ Other', 'value': 'Other'}
+                        {'label': 'Male', 'value': 'Male'},
+                        {'label': 'Female', 'value': 'Female'},
+                        {'label': 'Other', 'value': 'Other'}
                     ]
                 }
             except:
@@ -212,7 +216,7 @@ Provide your response in JSON format with these fields:
                 return {'response': "Please enter a valid contact number (at least 10 digits).", 'session_context': session_context}
             session_context['contact_number'] = msg
             session_context['state'] = 'COLLECT_LOCATION'
-            return {'response': "Thank you. Where are you located? (e.g., Chennai, Madurai, etc.)", 'session_context': session_context}
+            return {'response': "Thank you. Where are you located? (e.g., Chennai, Madurai, Coimbatore etc.)", 'session_context': session_context}
 
         elif state == 'COLLECT_LOCATION':
             if len(msg) < 2:
@@ -251,26 +255,55 @@ Provide your response in JSON format with these fields:
                 return {'response': "Please describe the symptoms in a bit more detail.", 'session_context': session_context}
             session_context['symptoms'] = msg
             
-            # Offer optional doctor selection
-            spec = session_context.get('suggested_specialization', 'General Physician')
-            doctors = self.doctor_query_func(spec)
-            if not doctors: doctors = self.doctor_query_func()[:5]
+            # RE-ANALYZE Symptoms here – crucial for cases where user didn't mention symptoms initially
+            try:
+                # Get current doctor info for context
+                doctors_all = self.doctor_query_func()
+                doctor_info = [{'name': d.name, 'specialization': d.specialization, 'city': d.city} for d in doctors_all]
+                analysis = self.analyze_with_gemini(msg, doctor_info)
+                spec = analysis.get('suggested_specialization', 'General Physician')
+            except:
+                spec = 'General Physician'
+
+            session_context['suggested_specialization'] = spec
+            city = session_context.get('location')
             
-            doc_list = "\n".join([f"• {d.name} ({d.specialization})" for d in doctors])
+            # Logic Step 1: Specific Specialist in patient's City
+            doctors = self.doctor_query_func(spec, city)
+            
+            # Logic Step 2: Fallback to General Physician in SAME City
+            if not doctors and spec != 'General Physician':
+                doctors = self.doctor_query_func('General Physician', city)
+                if doctors:
+                    spec = 'General Physician (Recommended Alternative)'
+            
+            # Logic Step 3: Fallback to specific Specialist in ANY City
+            if not doctors:
+                doctors = self.doctor_query_func(spec)
+                
+            # Logic Step 4: Fallback to anything in same city
+            if not doctors:
+                doctors = self.doctor_query_func(city=city)[:5]
+                
+            # Logic Step 5: Absolute fallback
+            if not doctors:
+                doctors = self.doctor_query_func()[:5]
+
+            doc_list = "\n".join([f"• {d.name} ({d.specialization}) in {d.city}" for d in doctors])
             session_context['state'] = 'COLLECT_DOCTOR'
             
             # Store doctors info for frontend UI
             session_context['available_doctors'] = [
-                {'id': d.id, 'name': d.name, 'specialization': d.specialization}
+                {'id': d.id, 'name': d.name, 'specialization': d.specialization, 'city': d.city}
                 for d in doctors
             ]
             
             return {
-                'response': f"Based on your symptoms, I recommend a **{spec}**. \n\nOur available doctors are:\n{doc_list}\n\nWhich doctor would you prefer?",
+                'response': f"Based on your symptoms, I recommend seeing a **{spec}**. \n\nHere are the available doctors in **{city}** (or nearby):\n{doc_list}\n\nWhich doctor would you prefer?",
                 'session_context': session_context,
                 'ui_type': 'doctor_selection',
                 'options': [
-                    {'label': f"{d.name} ({d.specialization})", 'value': str(d.id)}
+                    {'label': f"{d.name} ({d.specialization}) - {d.city}", 'value': str(d.id)}
                     for d in doctors
                 ] + [{'label': 'Any Available Doctor', 'value': 'any'}]
             }

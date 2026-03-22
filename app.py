@@ -185,11 +185,14 @@ with app.app_context():
     db.session.commit()
 
 # Patient Agent Initialization
-def get_doctors_for_agent(specialization=None):
+def get_doctors_for_agent(specialization=None, city=None):
     with app.app_context():
+        query = Doctor.query
         if specialization:
-            return Doctor.query.filter_by(specialization=specialization).all()
-        return Doctor.query.all()
+            query = query.filter(Doctor.specialization.ilike(f"%{specialization}%"))
+        if city:
+            query = query.filter(Doctor.city.ilike(f"%{city}%"))
+        return query.all()
 
 patient_agent = PatientAgent(
     db_models={'User': User, 'Doctor': Doctor, 'Appointment': Appointment, 'ChatHistory': ChatHistory},
