@@ -44,61 +44,114 @@ function ChatbotPage() {
   const recognitionRef = useRef(null);
   const chatEndRef = useRef(null);
 
-  // Initialize Speech Recognition
+  // Initialize Speech Support check
   useEffect(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (SpeechRecognition) {
       setSpeechSupported(true);
-      const recognition = new SpeechRecognition();
-      recognition.continuous = false;
-      recognition.interimResults = true;
-      recognition.lang = 'en-US';
-
-      recognition.onresult = (event) => {
-        let interim = '';
-        let final = '';
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          if (event.results[i].isFinal) {
-            final += event.results[i][0].transcript;
-          } else {
-            interim += event.results[i][0].transcript;
-          }
-        }
-        if (final) {
-          setInput(prev => (prev + ' ' + final).trim());
-          setInterimText('');
-        } else {
-          setInterimText(interim);
-        }
-      };
-
-      recognition.onend = () => {
-        setListening(false);
-        setInterimText('');
-      };
-
-      recognition.onerror = (event) => {
-        console.error('Speech recognition error:', event.error);
-        setListening(false);
-        setInterimText('');
-        if (event.error !== 'no-speech' && event.error !== 'aborted') {
-          setError('Microphone error: ' + event.error);
-        }
-      };
-
-      recognitionRef.current = recognition;
     }
   }, []);
 
-  const toggleListening = () => {
-    if (!recognitionRef.current) return;
-    if (listening) {
-      recognitionRef.current.stop();
+  const isListeningRef = useRef(false);
+
+  const startRecognition = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) return;
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
+
+    recognition.onstart = () => {
+      setListening(true);
+      isListeningRef.current = true;
+    };
+
+    recognition.onresult = (event) => {
+      let interim = '';
+      let final = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        if (event.results[i].isFinal) {
+          final += event.results[i][0].transcript;
+        } else {
+          interim += event.results[i][0].transcript;
+        }
+      }
+      if (final) {
+        setInput(prev => (prev + ' ' + final).trim());
+        setInterimText('');
+      } else {
+        setInterimText(interim);
+      }
+    };
+
+    recognition.onend = () => {
       setListening(false);
+      isListeningRef.current = false;
+      setInterimText('');
+    };
+
+    recognition.onerror = (event) => {
+      console.error('Speech recognition error:', event.error);
+      setListening(false);
+      isListeningRef.current = false;
+      setInterimText('');
+
+      let errorMsg = '';
+      switch (event.error) {
+        case 'not-allowed':
+        case 'service-not-allowed':
+          errorMsg = 'Microphone access denied. Please check your browser settings and use HTTPS or localhost.';
+          break;
+        case 'no-speech':
+          // Handled silently
+          break;
+        case 'network':
+          errorMsg = 'Network error during speech recognition.';
+          break;
+        default:
+          errorMsg = 'Microphone error: ' + event.error;
+      }
+
+      if (errorMsg) {
+        setError(errorMsg);
+      }
+    };
+
+    try {
+      recognition.start();
+      recognitionRef.current = recognition;
+    } catch (err) {
+      console.error('Failed to start recognition:', err);
+      setError('Could not access microphone.');
+      setListening(false);
+      isListeningRef.current = false;
+    }
+  };
+
+  const toggleListening = () => {
+    if (!speechSupported) {
+      setError('Speech recognition is not supported in this browser.');
+      return;
+    }
+
+    if (isListeningRef.current) {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+      setListening(false);
+      isListeningRef.current = false;
     } else {
       setError('');
-      recognitionRef.current.start();
-      setListening(true);
+
+      // Check for secure context
+      if (!window.isSecureContext && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+        setError('Voice input requires a secure (HTTPS) connection on this browser.');
+        return;
+      }
+
+      startRecognition();
     }
   };
 

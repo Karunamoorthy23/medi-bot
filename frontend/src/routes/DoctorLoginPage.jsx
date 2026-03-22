@@ -10,6 +10,18 @@ function DoctorLoginPage() {
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [isOpen, setIsOpen] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (isOpen && !event.target.closest('.custom-select-container')) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [isOpen]);
 
     useEffect(() => {
         let cancelled = false;
@@ -82,30 +94,97 @@ function DoctorLoginPage() {
 
                     <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                         <div className="form-group" style={{ margin: 0 }}>
-                            <label style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '8px', display: 'block' }}>Select Doctor</label>
-                            <div style={{ position: 'relative' }}>
-                                <div style={{ position: 'absolute', top: '50%', left: '16px', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }}>
+                            <label style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '8px', display: 'block' }}>Select Doctor Account</label>
+                            <div style={{ position: 'relative' }} className="custom-select-container">
+                                <div style={{ position: 'absolute', top: '50%', left: '16px', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none', zIndex: 1 }}>
                                     <FaUserMd />
                                 </div>
-                                <select
-                                    required
-                                    className="form-control"
-                                    value={doctorName}
-                                    onChange={(e) => setDoctorName(e.target.value)}
-                                    style={{ paddingLeft: '44px', height: '52px', borderRadius: '12px', border: '1px solid var(--border-color)', backgroundColor: '#f9fafb', fontSize: '15px', appearance: 'none', width: '100%' }}
+                                <div
+                                    onClick={() => !loading && setIsOpen(!isOpen)}
+                                    style={{
+                                        paddingLeft: '44px', paddingRight: '44px', height: '52px', borderRadius: '12px',
+                                        border: '1px solid var(--border-color)', backgroundColor: '#f9fafb',
+                                        fontSize: '15px', width: '100%', display: 'flex', alignItems: 'center',
+                                        cursor: loading ? 'not-allowed' : 'pointer', boxSizing: 'border-box',
+                                        color: doctorName ? 'var(--text-primary)' : 'var(--text-muted)'
+                                    }}
                                 >
-                                    <option value="">Choose your profile...</option>
-                                    {doctors.map((d) => (
-                                        <option key={d.id} value={d.name}>
-                                            {d.name} ({d.specialization}) {d.email ? ` - ${d.email}` : ''}
-                                        </option>
-                                    ))}
-                                </select>
+                                    {doctorName ? (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', overflow: 'hidden' }}>
+                                            <span style={{ fontWeight: '600', fontSize: '14px' }}>{doctorName}</span>
+                                            {doctors.find(d => d.name === doctorName)?.specialization && (
+                                                <span style={{ fontSize: '12px', opacity: 0.7 }}>{doctors.find(d => d.name === doctorName).specialization}</span>
+                                            )}
+                                        </div>
+                                    ) : 'Choose your profile...'}
+                                </div>
                                 <div style={{ position: 'absolute', top: '50%', right: '16px', transform: 'translateY(-50%)', pointerEvents: 'none', color: 'var(--text-muted)' }}>
-                                    <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                                    <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" style={{ transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
                                         <path d="M6 9l6 6 6-6" />
                                     </svg>
                                 </div>
+
+                                {isOpen && (
+                                    <div style={{
+                                        position: 'absolute', top: 'calc(100% + 8px)', left: 0, right: 0,
+                                        backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
+                                        border: '1px solid var(--border-color)', zIndex: 1000, overflow: 'hidden'
+                                    }}>
+                                        <div style={{ padding: '8px', borderBottom: '1px solid #f1f5f9' }}>
+                                            <input
+                                                autoFocus
+                                                type="text"
+                                                placeholder="Search by name or email..."
+                                                value={searchTerm}
+                                                onChange={(e) => setSearchTerm(e.target.value)}
+                                                onClick={(e) => e.stopPropagation()}
+                                                style={{
+                                                    width: '100%', padding: '8px 12px', borderRadius: '8px',
+                                                    border: '1px solid #e2e8f0', fontSize: '14px', outline: 'none'
+                                                }}
+                                            />
+                                        </div>
+                                        <div style={{ maxHeight: '250px', overflowY: 'auto' }}>
+                                            {doctors.filter(d =>
+                                                d.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                                d.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                                d.specialization.toLowerCase().includes(searchTerm.toLowerCase())
+                                            ).length > 0 ? (
+                                                doctors.filter(d =>
+                                                    d.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                                    d.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                                    d.specialization.toLowerCase().includes(searchTerm.toLowerCase())
+                                                ).map((d) => (
+                                                    <div
+                                                        key={d.id}
+                                                        onClick={() => {
+                                                            setDoctorName(d.name);
+                                                            setIsOpen(false);
+                                                            setSearchTerm('');
+                                                        }}
+                                                        style={{
+                                                            padding: '12px 16px', cursor: 'pointer', borderBottom: '1px solid #f8fafc',
+                                                            backgroundColor: doctorName === d.name ? '#f1f5f9' : 'transparent',
+                                                            transition: 'background-color 0.2s'
+                                                        }}
+                                                        onMouseEnter={(e) => e.target.style.backgroundColor = '#f8fafc'}
+                                                        onMouseLeave={(e) => { if (doctorName !== d.name) e.target.style.backgroundColor = 'transparent' }}
+                                                    >
+                                                        <div style={{ fontWeight: '600', color: 'var(--text-primary)', fontSize: '14px' }}>{d.name}</div>
+                                                        <div style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '2px', marginTop: '4px' }}>
+                                                            <span>{d.specialization}</span>
+                                                            {d.email && <span style={{ opacity: 0.7 }}>{d.email}</span>}
+                                                        </div>
+                                                    </div>
+                                                ))
+                                            ) : (
+                                                <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '14px' }}>
+                                                    No doctors found matching "{searchTerm}"
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
