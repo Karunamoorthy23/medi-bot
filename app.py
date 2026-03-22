@@ -1,4 +1,4 @@
-from flask import Flask, request, redirect, url_for, session, jsonify, send_from_directory
+﻿from flask import Flask, request, redirect, url_for, session, jsonify, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS, cross_origin
 from datetime import datetime, timedelta
@@ -668,7 +668,7 @@ def send_message():
         db.session.commit()
         
         # Save booking confirmation to chat history
-        confirmation = f"""✅ **Your appointment has been booked successfully.**
+        confirmation = f"""âœ… **Your appointment has been booked successfully.**
 
 **Appointment Details:**
 - **Patient Name:** {ctx.get('patient_name', '')}
@@ -678,7 +678,7 @@ def send_message():
 - **Symptoms:** {ctx.get('symptoms', '')}
 - **Contact Number:** {ctx.get('contact_number', '')}
 
-I have sent your request to the doctor. Is there anything else I can help you with? ❤️"""
+I have sent your request to the doctor. Is there anything else I can help you with? â¤ï¸"""
 
         # Save confirmation message to history
         chat_history = ChatHistory(
@@ -1135,4 +1135,4 @@ def api_doctor_delete_appointment(appointment_id):
         return jsonify({'success': False, 'message': str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, host='0.0.0.0', port=5001)
