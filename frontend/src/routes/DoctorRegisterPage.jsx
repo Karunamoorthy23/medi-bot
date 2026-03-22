@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FaUserMd, FaEnvelope, FaLock, FaStethoscope, FaClock } from 'react-icons/fa';
+import { FaUserMd, FaEnvelope, FaLock, FaStethoscope, FaClock, FaHospital, FaMapMarkerAlt, FaRobot, FaCalendarAlt, FaClipboardList } from 'react-icons/fa';
 import { apiPost } from '../api/client';
 
 const SPECIALIZATIONS = [
@@ -27,9 +27,12 @@ function DoctorRegisterPage() {
         name: '',
         email: '',
         specialization: '',
+        hospital: '',
+        city: '',
+        startTime: '09:00',
+        endTime: '17:00',
         password: '',
         confirmPassword: '',
-        consultation_duration: 30,
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -59,8 +62,10 @@ function DoctorRegisterPage() {
                 name: form.name,
                 email: form.email,
                 specialization: form.specialization,
+                hospital: form.hospital,
+                city: form.city,
+                available_slots: `${form.startTime} to ${form.endTime}`,
                 password: form.password,
-                consultation_duration: Number(form.consultation_duration),
             });
             setSuccess(true);
             setTimeout(() => navigate('/doctor-login'), 1800);
@@ -101,9 +106,9 @@ function DoctorRegisterPage() {
 
                     <div style={{ marginTop: '48px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
                         {[
-                            { icon: '🗓️', text: 'Smart appointment scheduling' },
-                            { icon: '🤖', text: 'AI-assisted patient consultation' },
-                            { icon: '📋', text: 'Real-time patient record access' },
+                            { icon: <FaCalendarAlt />, text: 'Smart appointment scheduling' },
+                            { icon: <FaRobot />, text: 'AI-assisted patient consultation' },
+                            { icon: <FaClipboardList />, text: 'Real-time patient record access' },
                         ].map(item => (
                             <div key={item.text} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                 <span style={{ fontSize: '22px' }}>{item.icon}</span>
@@ -218,28 +223,70 @@ function DoctorRegisterPage() {
                                 </div>
                             </div>
 
-                            {/* Consultation Duration */}
+                            {/* Hospital & City Group */}
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                                <div className="form-group" style={{ margin: 0 }}>
+                                    <label style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '8px', display: 'block' }}>Hospital <span style={{ color: '#94a3b8', fontWeight: 400 }}>— optional</span></label>
+                                    <div style={{ position: 'relative' }}>
+                                        <div style={iconStyle}><FaHospital /></div>
+                                        <input
+                                            type="text"
+                                            name="hospital"
+                                            className="form-control"
+                                            placeholder="Apollo Hospital"
+                                            value={form.hospital}
+                                            onChange={handleChange}
+                                            style={inputStyle}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="form-group" style={{ margin: 0 }}>
+                                    <label style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '8px', display: 'block' }}>City <span style={{ color: '#ef4444' }}>*</span></label>
+                                    <div style={{ position: 'relative' }}>
+                                        <div style={iconStyle}><FaMapMarkerAlt /></div>
+                                        <input
+                                            type="text"
+                                            name="city"
+                                            required
+                                            className="form-control"
+                                            placeholder="Chennai"
+                                            value={form.city}
+                                            onChange={handleChange}
+                                            style={inputStyle}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Work Hours Group */}
                             <div className="form-group" style={{ margin: 0 }}>
                                 <label style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '8px', display: 'block' }}>
-                                    Consultation Duration (minutes) <span style={{ color: '#94a3b8', fontWeight: 400 }}>— optional</span>
+                                    Working Hours <span style={{ color: '#ef4444' }}>*</span>
                                 </label>
-                                <div style={{ position: 'relative' }}>
-                                    <div style={iconStyle}><FaClock /></div>
-                                    <select
-                                        name="consultation_duration"
-                                        className="form-control"
-                                        value={form.consultation_duration}
-                                        onChange={handleChange}
-                                        style={{ ...inputStyle, appearance: 'none' }}
-                                    >
-                                        {[15, 20, 30, 45, 60].map(m => (
-                                            <option key={m} value={m}>{m} minutes</option>
-                                        ))}
-                                    </select>
-                                    <div style={{ position: 'absolute', top: '50%', right: '16px', transform: 'translateY(-50%)', pointerEvents: 'none', color: 'var(--text-muted)' }}>
-                                        <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-                                            <path d="M6 9l6 6 6-6" />
-                                        </svg>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                                    <div style={{ position: 'relative' }}>
+                                        <div style={{ ...iconStyle, fontSize: '12px' }}>FROM</div>
+                                        <input
+                                            type="time"
+                                            name="startTime"
+                                            required
+                                            className="form-control"
+                                            value={form.startTime}
+                                            onChange={handleChange}
+                                            style={{ ...inputStyle, paddingLeft: '54px' }}
+                                        />
+                                    </div>
+                                    <div style={{ position: 'relative' }}>
+                                        <div style={{ ...iconStyle, fontSize: '12px' }}>TO</div>
+                                        <input
+                                            type="time"
+                                            name="endTime"
+                                            required
+                                            className="form-control"
+                                            value={form.endTime}
+                                            onChange={handleChange}
+                                            style={{ ...inputStyle, paddingLeft: '54px' }}
+                                        />
                                     </div>
                                 </div>
                             </div>

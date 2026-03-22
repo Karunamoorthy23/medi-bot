@@ -59,8 +59,12 @@ class Doctor(db.Model):
     name = db.Column(db.String(50), unique=True, nullable=False)
     email = db.Column(db.String(100), unique=True, nullable=True)
     specialization = db.Column(db.String(100), nullable=False)
+    hospital = db.Column(db.String(100), nullable=True)
+    city = db.Column(db.String(50), nullable=True)
+    available_slots = db.Column(db.String(255), nullable=True)
     password = db.Column(db.String(100), default='123')
     consultation_duration = db.Column(db.Integer, default=30)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class Appointment(db.Model):
     __tablename__ = 'appointments'
@@ -113,11 +117,56 @@ with app.app_context():
     
     # Add predefined doctors if not exists
     doctors_data = [
-        {'name': 'Dr. Smith', 'email': 'smith@medipro.com', 'specialization': 'General Physician', 'duration': 30},
-        {'name': 'Dr. Johnson', 'email': 'johnson@medipro.com', 'specialization': 'Orthopedic Doctor', 'duration': 30},
-        {'name': 'Dr. Williams', 'email': 'williams@medipro.com', 'specialization': 'Pediatrician', 'duration': 30},
-        {'name': 'Dr. Brown', 'email': 'brown@medipro.com', 'specialization': 'Ophthalmologist', 'duration': 30},
-        {'name': 'Dr. Jones', 'email': 'jones@medipro.com', 'specialization': 'Dermatologist', 'duration': 30}
+        {"name": "Dr. Rajesh Kumar", "email": "rajesh.kumar1@gmail.com", "specialization": "Cardiologist", "hospital": "Apollo Hospital", "city": "Chennai", "slots": "10:00 AM|2:00 PM"},
+        {"name": "Dr. Priya Sharma", "email": "priya.sharma2@gmail.com", "specialization": "Dermatologist", "hospital": "Fortis Malar Hospital", "city": "Chennai", "slots": "11:00 AM|3:00 PM"},
+        {"name": "Dr. Arjun Reddy", "email": "arjun.reddy3@gmail.com", "specialization": "Orthopedic", "hospital": "MIOT Hospital", "city": "Chennai", "slots": "9:00 AM|1:00 PM"},
+        {"name": "Dr. Meena Lakshmi", "email": "meena.lakshmi4@gmail.com", "specialization": "Gynecologist", "hospital": "Kauvery Hospital", "city": "Chennai", "slots": "10:30 AM|4:00 PM"},
+        {"name": "Dr. Karthik Narayan", "email": "karthik.narayan5@gmail.com", "specialization": "Neurologist", "hospital": "Global Hospital", "city": "Chennai", "slots": "12:00 PM|5:00 PM"},
+        {"name": "Dr. Suresh Babu", "email": "suresh.babu6@gmail.com", "specialization": "Pediatrician", "hospital": "Rainbow Hospital", "city": "Chennai", "slots": "9:30 AM|2:30 PM"},
+        {"name": "Dr. Divya Nair", "email": "divya.nair7@gmail.com", "specialization": "ENT Specialist", "hospital": "SRM Hospital", "city": "Kanchipuram", "slots": "10:00 AM|1:00 PM"},
+        {"name": "Dr. Vignesh Kumar", "email": "vignesh.kumar8@gmail.com", "specialization": "General Physician", "hospital": "GH Hospital", "city": "Madurai", "slots": "8:00 AM|12:00 PM"},
+        {"name": "Dr. Lavanya R", "email": "lavanya.r9@gmail.com", "specialization": "Cardiologist", "hospital": "Meenakshi Mission Hospital", "city": "Madurai", "slots": "11:00 AM|3:00 PM"},
+        {"name": "Dr. Mohan Das", "email": "mohan.das10@gmail.com", "specialization": "Dentist", "hospital": "Smile Care Clinic", "city": "Coimbatore", "slots": "10:00 AM|6:00 PM"},
+        {"name": "Dr. Anitha S", "email": "anitha.s11@gmail.com", "specialization": "Pediatrician", "hospital": "Ganga Hospital", "city": "Coimbatore", "slots": "9:00 AM|1:00 PM"},
+        {"name": "Dr. Sanjay Kumar", "email": "sanjay.kumar12@gmail.com", "specialization": "Orthopedic", "hospital": "Kovai Medical Center", "city": "Coimbatore", "slots": "2:00 PM|6:00 PM"},
+        {"name": "Dr. Rekha Menon", "email": "rekha.menon13@gmail.com", "specialization": "Dermatologist", "hospital": "PSG Hospital", "city": "Coimbatore", "slots": "11:30 AM|4:30 PM"},
+        {"name": "Dr. Harish K", "email": "harish.k14@gmail.com", "specialization": "Neurologist", "hospital": "KMCH Hospital", "city": "Coimbatore", "slots": "10:00 AM|3:00 PM"},
+        {"name": "Dr. Ashok Kumar", "email": "ashok.kumar15@gmail.com", "specialization": "Cardiologist", "hospital": "CMC Hospital", "city": "Vellore", "slots": "9:00 AM|12:00 PM"},
+        {"name": "Dr. Preethi J", "email": "preethi.j16@gmail.com", "specialization": "Gynecologist", "hospital": "CMC Hospital", "city": "Vellore", "slots": "1:00 PM|5:00 PM"},
+        {"name": "Dr. Ramesh Babu", "email": "ramesh.babu17@gmail.com", "specialization": "General Physician", "hospital": "GH Hospital", "city": "Salem", "slots": "8:30 AM|12:30 PM"},
+        {"name": "Dr. Nisha P", "email": "nisha.p18@gmail.com", "specialization": "Dermatologist", "hospital": "Vinayaka Mission Hospital", "city": "Salem", "slots": "10:00 AM|2:00 PM"},
+        {"name": "Dr. Kiran S", "email": "kiran.s19@gmail.com", "specialization": "Orthopedic", "hospital": "SKS Hospital", "city": "Salem", "slots": "3:00 PM|7:00 PM"},
+        {"name": "Dr. Deepa R", "email": "deepa.r20@gmail.com", "specialization": "Pediatrician", "hospital": "Lotus Hospital", "city": "Erode", "slots": "9:00 AM|1:00 PM"},
+        {"name": "Dr. Manikandan T", "email": "manikandan.t21@gmail.com", "specialization": "Cardiologist", "hospital": "GH Hospital", "city": "Erode", "slots": "11:00 AM|4:00 PM"},
+        {"name": "Dr. Shalini M", "email": "shalini.m22@gmail.com", "specialization": "Gynecologist", "hospital": "Sudha Hospital", "city": "Erode", "slots": "10:30 AM|3:30 PM"},
+        {"name": "Dr. Prakash V", "email": "prakash.v23@gmail.com", "specialization": "Neurologist", "hospital": "KG Hospital", "city": "Erode", "slots": "2:00 PM|6:00 PM"},
+        {"name": "Dr. Sangeetha K", "email": "sangeetha.k24@gmail.com", "specialization": "ENT Specialist", "hospital": "City Hospital", "city": "Tiruppur", "slots": "9:30 AM|1:30 PM"},
+        {"name": "Dr. Dinesh Kumar", "email": "dinesh.kumar25@gmail.com", "specialization": "Dentist", "hospital": "Smile Dental", "city": "Tiruppur", "slots": "10:00 AM|5:00 PM"},
+        {"name": "Dr. Balaji R", "email": "balaji.r26@gmail.com", "specialization": "General Physician", "hospital": "GH Hospital", "city": "Tirunelveli", "slots": "8:00 AM|12:00 PM"},
+        {"name": "Dr. Revathi S", "email": "revathi.s27@gmail.com", "specialization": "Pediatrician", "hospital": "Annai Hospital", "city": "Tirunelveli", "slots": "1:00 PM|5:00 PM"},
+        {"name": "Dr. Saravanan M", "email": "saravanan.m28@gmail.com", "specialization": "Orthopedic", "hospital": "Shifa Hospital", "city": "Tirunelveli", "slots": "2:30 PM|6:30 PM"},
+        {"name": "Dr. Kavitha R", "email": "kavitha.r29@gmail.com", "specialization": "Gynecologist", "hospital": "Rajaji Hospital", "city": "Madurai", "slots": "10:00 AM|3:00 PM"},
+        {"name": "Dr. Ajith Kumar", "email": "ajith.kumar30@gmail.com", "specialization": "Cardiologist", "hospital": "Apollo Hospital", "city": "Madurai", "slots": "11:00 AM|4:00 PM"},
+        {"name": "Dr. Naveen Raj", "email": "naveen.raj31@gmail.com", "specialization": "Neurologist", "hospital": "Global Hospital", "city": "Trichy", "slots": "12:00 PM|5:00 PM"},
+        {"name": "Dr. Keerthi S", "email": "keerthi.s32@gmail.com", "specialization": "Dermatologist", "hospital": "KMC Hospital", "city": "Trichy", "slots": "10:30 AM|2:30 PM"},
+        {"name": "Dr. Pradeep K", "email": "pradeep.k33@gmail.com", "specialization": "General Physician", "hospital": "GH Hospital", "city": "Trichy", "slots": "9:00 AM|1:00 PM"},
+        {"name": "Dr. Uma Maheshwari", "email": "uma.maheshwari34@gmail.com", "specialization": "Gynecologist", "hospital": "Kauvery Hospital", "city": "Trichy", "slots": "2:00 PM|6:00 PM"},
+        {"name": "Dr. Karthika R", "email": "karthika.r35@gmail.com", "specialization": "Pediatrician", "hospital": "Child Care Hospital", "city": "Trichy", "slots": "9:30 AM|1:30 PM"},
+        {"name": "Dr. Siva Kumar", "email": "siva.kumar36@gmail.com", "specialization": "Orthopedic", "hospital": "Ortho Care Hospital", "city": "Nagercoil", "slots": "3:00 PM|7:00 PM"},
+        {"name": "Dr. Anbu Selvan", "email": "anbu.selvan37@gmail.com", "specialization": "Cardiologist", "hospital": "Heart Care", "city": "Nagercoil", "slots": "10:00 AM|2:00 PM"},
+        {"name": "Dr. Raji P", "email": "raji.p38@gmail.com", "specialization": "Dermatologist", "hospital": "Skin Clinic", "city": "Nagercoil", "slots": "11:00 AM|3:00 PM"},
+        {"name": "Dr. Vinoth K", "email": "vinoth.k39@gmail.com", "specialization": "ENT Specialist", "hospital": "ENT Care", "city": "Nagercoil", "slots": "9:00 AM|12:00 PM"},
+        {"name": "Dr. Hari Prasad", "email": "hari.prasad40@gmail.com", "specialization": "Dentist", "hospital": "Dental Hub", "city": "Nagercoil", "slots": "2:00 PM|6:00 PM"},
+        {"name": "Dr. Suresh Kumar", "email": "suresh.kumar41@gmail.com", "specialization": "General Physician", "hospital": "GH Hospital", "city": "Kanyakumari", "slots": "8:00 AM|11:00 AM"},
+        {"name": "Dr. Divya Priya", "email": "divya.priya42@gmail.com", "specialization": "Pediatrician", "hospital": "Child Health", "city": "Kanyakumari", "slots": "1:00 PM|4:00 PM"},
+        {"name": "Dr. Mohan Raj", "email": "mohan.raj43@gmail.com", "specialization": "Orthopedic", "hospital": "Ortho Center", "city": "Kanyakumari", "slots": "3:00 PM|6:00 PM"},
+        {"name": "Dr. Nivetha R", "email": "nivetha.r44@gmail.com", "specialization": "Gynecologist", "hospital": "Women's Care", "city": "Kanyakumari", "slots": "10:00 AM|2:00 PM"},
+        {"name": "Dr. Lokesh B", "email": "lokesh.b45@gmail.com", "specialization": "Cardiologist", "hospital": "Heart Clinic", "city": "Kanyakumari", "slots": "11:00 AM|3:00 PM"},
+        {"name": "Dr. Arun Kumar", "email": "arun.kumar46@gmail.com", "specialization": "Neurologist", "hospital": "Brain Care", "city": "Hosur", "slots": "12:00 PM|5:00 PM"},
+        {"name": "Dr. Swathi S", "email": "swathi.s47@gmail.com", "specialization": "Dermatologist", "hospital": "Skin Plus", "city": "Hosur", "slots": "10:00 AM|2:00 PM"},
+        {"name": "Dr. Praveen Raj", "email": "praveen.raj48@gmail.com", "specialization": "Orthopedic", "hospital": "Ortho Hospital", "city": "Hosur", "slots": "3:00 PM|7:00 PM"},
+        {"name": "Dr. Gayathri M", "email": "gayathri.m49@gmail.com", "specialization": "Pediatrician", "hospital": "Kids Care", "city": "Hosur", "slots": "9:00 AM|1:00 PM"},
+        {"name": "Dr. Vasanth K", "email": "vasanth.k50@gmail.com", "specialization": "General Physician", "hospital": "City Clinic", "city": "Hosur", "slots": "8:30 AM|12:30 PM"}
     ]
     
     for doc_data in doctors_data:
@@ -127,8 +176,10 @@ with app.app_context():
                 name=doc_data['name'],
                 email=doc_data['email'],
                 specialization=doc_data['specialization'],
-                password='123',
-                consultation_duration=doc_data['duration']
+                hospital=doc_data['hospital'],
+                city=doc_data['city'],
+                available_slots=doc_data['slots'],
+                password='123'
             )
             db.session.add(doctor)
     db.session.commit()
@@ -297,6 +348,9 @@ def serialize_doctor(d):
         'name': d.name,
         'email': d.email,
         'specialization': d.specialization,
+        'hospital': d.hospital,
+        'city': d.city,
+        'available_slots': d.available_slots,
         'consultation_duration': d.consultation_duration,
     }
 
@@ -432,6 +486,9 @@ def api_doctor_register():
     email = (data.get('email') or '').strip().lower()
     specialization = (data.get('specialization') or '').strip()
     password = data.get('password') or ''
+    hospital = (data.get('hospital') or '').strip()
+    city = (data.get('city') or '').strip()
+    available_slots = (data.get('available_slots') or '').strip()
     consultation_duration = int(data.get('consultation_duration') or 30)
 
     if not name or not email or not specialization or not password:
@@ -447,6 +504,9 @@ def api_doctor_register():
         email=email,
         specialization=specialization,
         password=password,
+        hospital=hospital,
+        city=city,
+        available_slots=available_slots,
         consultation_duration=consultation_duration
     )
     db.session.add(new_doctor)
